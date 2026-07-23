@@ -1,0 +1,53 @@
+# Unity generated directories
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Addressables build output
+/[Ss]erver[Dd]ata/
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/
+
+# IDE and editor generated files
+/.vs/
+/.idea/
+/.vscode/
+/.consulo/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userosscache
+*.userprefs
+*.pidb
+*.booproj
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.rsuser
+
+# Unity / Rider generated plugins
+/[Aa]ssets/[Pp]lugins/[Ee]ditor/JetBrains*
+
+# Build artifacts and exported packages
+*.apk
+*.aab
+*.app
+*.unitypackage
+
+# Crash reports and profiler output
+sysinfo.txt
+mono_crash.*
+crashlytics-build.properties
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
