@@ -1,0 +1,121 @@
+# UIManagerDemo
+
+一个面向 Unity 2022.3 LTS 的异步 UI 窗口管理示例。项目使用 uGUI、TextMeshPro、UniTask、R3 和 VContainer，实现窗口栈、分层渲染、参数与返回值、动画、Toast 及跨场景生命周期管理。
+
+## 主要特性
+
+- 基于 `UniTask` 的异步窗口打开与关闭 API
+- 支持有参窗口和强类型返回值
+- `Dialog`、`FullScreen`、`None` 三种窗口框架
+- Background、Normal、Popup、Loading、Toast、Debug 分层管理
+- 窗口栈、栈顶交互控制及 Esc 返回键关闭
+- 遮罩点击、淡入淡出、缩放和 Toast 滑动动画
+- 独立于主窗口栈的自动计时 Toast
+- VContainer 构造注入及场景对象注入
+- 跨场景持久化的 Canvas 和 EventSystem
+- TextMeshPro 动态中文字体与多图集支持
+- Unity Input System 输入支持
+
+## 环境要求
+
+- Unity `2022.3.62f3c1`
+- TextMeshPro `3.0.7`
+- Input System `1.19.0`
+- UniTask
+- R3
+- VContainer
+
+依赖已写入 `Packages/manifest.json`，首次打开项目时由 Unity Package Manager 自动恢复。Git 依赖恢复需要能够访问 GitHub。
+
+## 快速开始
+
+1. 使用 Unity Hub 添加并打开本项目。
+2. 等待 Unity 完成 Package 导入和脚本编译。
+3. 打开 `Assets/UISystem/Scenes/UIWindowTestCases.unity`。
+4. 进入 Play Mode，通过测试台验证 Dialog、FullScreen、None 和 Toast 用例。
+
+测试场景已经加入 Build Settings。
+
+## 基本用法
+
+推荐通过 VContainer 注入 `IUIManager`：
+
+```csharp
+using Cysharp.Threading.Tasks;
+using Game.UISystem;
+using Game.UISystem.Example;
+using VContainer;
+
+public sealed class ExamplePresenter
+{
+    private readonly IUIManager ui;
+
+    [Inject]
+    public ExamplePresenter(IUIManager ui)
+    {
+        this.ui = ui;
+    }
+
+    public async UniTask<bool> ShowConfirmAsync()
+    {
+        return await ui.OpenAsync<ConfirmWindow, ConfirmParam, bool>(
+            UIWindowId.ConfirmWindow,
+            new ConfirmParam
+            {
+                Title = "确认",
+                Message = "是否继续？",
+                Confirm = "继续",
+                Cancel = "取消"
+            });
+    }
+}
+```
+
+打开无参数、无返回值窗口：
+
+```csharp
+await ui.OpenAsync<SettingsWindow>(UIWindowId.SettingWindow);
+```
+
+显示 Toast：
+
+```csharp
+ui.ShowToast("保存成功", time: ToastDuration.Normal);
+```
+
+## 添加新窗口
+
+1. 在 `UIWindowId` 中增加唯一 ID。
+2. 创建继承 `UIWindow` 或 `UIWindow<TParam, TResult>` 的窗口脚本。
+3. 创建内容 Prefab，并放入 `Assets/Resources/UISystem/Windows/`。
+4. 按需创建或复用 `UIWindowStyle`。
+5. 在 `Assets/UISystem/Config/UIWindowConfig.asset` 中注册窗口 ID、Prefab、样式和默认层级。
+6. 通过 `IUIManager.OpenAsync` 打开窗口。
+
+窗口内容应在 `OnInit` 中初始化，在 `OnOpened` 中启动仅应在完整显示后执行的逻辑，在 `OnClosing` 中解绑业务监听。
+
+## 目录结构
+
+```text
+Assets/
+├── Fonts/                         TMP 中文字体资源
+├── Resources/UISystem/
+│   ├── Frames/                    公共窗口框架 Prefab
+│   └── Windows/                   窗口内容 Prefab
+└── UISystem/
+    ├── Config/                    窗口注册表与样式配置
+    ├── Examples/                  示例窗口和测试入口
+    ├── Prefabs/UISystemRoot.prefab
+    ├── Runtime/                   UI 系统核心代码
+    └── Scenes/UIWindowTestCases.unity
+```
+
+## 设计说明
+
+`UISystemScope` 是全局组合根，负责构建 VContainer、持久化 UI 根节点、注入场景对象并维持唯一 EventSystem。`UIManager` 根据 `UIWindowConfig` 加载 Frame 和内容 Prefab，并负责窗口栈、动画、交互状态与资源清理。
+
+业务代码应优先注入 `IUIManager`。`UIManager.Instance` 仅作为非容器代码和旧代码的兼容入口。
+
+## 许可证
+
+项目自身代码与资源采用 [MIT License](LICENSE)。第三方包、字体及其附带资源不因本项目的 MIT License 而重新授权，仍遵循各自许可证。
