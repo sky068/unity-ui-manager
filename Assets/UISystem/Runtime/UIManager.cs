@@ -53,6 +53,16 @@ namespace Game.UISystem
             string text,
             string icon = null,
             ToastDuration time = ToastDuration.Normal);
+
+        /// <summary>
+        /// 获取当前仍处于显示生命周期内的全屏窗口数量；包含开场和退场动画中的实例，
+        /// 直到实例完成清理后才从计数中移除。
+        /// </summary>
+        int GetOpenFullScreenCount();
+
+        /// <summary>获取指定 UI Layer 的根节点，供外部按需挂载自定义 UI。</summary>
+        RectTransform GetLayerRoot(UILayer layer);
+
         Canvas UICanvas { get; }
         int OpenCount { get; }
     }
@@ -197,6 +207,33 @@ namespace Game.UISystem
 
         public int OpenCount => _stack.Count;
         public Canvas UICanvas => _layerConfig.UICanvas;
+
+        public int GetOpenFullScreenCount()
+        {
+            int count = 0;
+            foreach (var entry in _activeEntries)
+            {
+                // 计数覆盖完整视觉生命周期：打开登记后立即计入，退场动画和 Destroy
+                // 完成前仍计入，避免外部 UI 在全屏窗口尚未消失时提前恢复。
+                if (entry?.Style != null &&
+                    entry.Style.frameType == UIFrameType.FullScreen &&
+                    entry.FrameGo != null)
+                    count++;
+            }
+            return count;
+        }
+
+        public RectTransform GetLayerRoot(UILayer layer)
+        {
+            if (!Enum.IsDefined(typeof(UILayer), layer))
+                throw new ArgumentOutOfRangeException(nameof(layer), layer, "未知的 UI Layer");
+
+            var root = _layerConfig.GetLayerRoot(layer);
+            if (root == null)
+                throw new InvalidOperationException(
+                    $"[UIManager] Layer '{layer}' 的根节点未配置或不属于主 Canvas");
+            return root;
+        }
 
         private static IUIManager _ui;
 

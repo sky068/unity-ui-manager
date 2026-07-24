@@ -84,6 +84,21 @@ await ui.OpenAsync<SettingsWindow>(UIWindowId.SettingWindow);
 ui.ShowToast("保存成功", time: ToastDuration.Normal);
 ```
 
+查询当前仍处于开场、显示或退场生命周期中的全屏窗口数量：
+
+```csharp
+int fullScreenCount = ui.GetOpenFullScreenCount();
+```
+
+获取指定 Layer 根节点并挂载外部 UI：
+
+```csharp
+RectTransform debugLayer = ui.GetLayerRoot(UILayer.Debug);
+var customView = Object.Instantiate(customViewPrefab, debugLayer, false);
+```
+
+通过 Layer 根节点手动添加的对象不归 `UIManager.CloseAllAsync` 管理，外部代码需要自行负责销毁和事件解绑；不要修改 Layer 根节点本身的父节点或 sibling 顺序。
+
 ## 添加新窗口
 
 1. 在 `UIWindowId` 中增加唯一 ID。
