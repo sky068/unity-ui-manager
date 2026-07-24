@@ -1,5 +1,3 @@
-using System;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using R3;
 using TMPro;
@@ -10,9 +8,8 @@ using VContainer;
 namespace Game.UISystem.Example
 {
     /// <summary>
-    /// 测试场景入口：每个按钮固定打开一个窗口用例。
-    /// 本类故意不使用 UIManager.Instance 兜底，用于验证场景对象的 VContainer 注入链路；
-    /// 如果注入失败，Start 会明确报错并停止绑定按钮。
+    /// Demo 场景入口：每个按钮展示一种窗口调用方式。
+    /// 本类使用 VContainer 注入 IUIManager，业务代码可以沿用相同写法。
     /// </summary>
     public class WindowTestScenePresenter : MonoBehaviour
     {
@@ -32,7 +29,7 @@ namespace Game.UISystem.Example
         [SerializeField] private Button noneLoadingButton;
         [SerializeField] private Button commonToastButton;
 
-        [Header("Occlusion")]
+        [Header("Window Stack")]
         [SerializeField] private Button dialogOcclusionButton;
         [SerializeField] private Button reverseDialogOcclusionButton;
         [SerializeField] private Button fullScreenOcclusionButton;
@@ -40,8 +37,6 @@ namespace Game.UISystem.Example
         [SerializeField] private TMP_Text resultText;
 
         private IUIManager _ui;
-        private bool _occlusionTestRunning;
-        private bool _secondaryWindowOpening;
 
         [Inject]
         private void Construct(IUIManager uiManager)
@@ -53,7 +48,7 @@ namespace Game.UISystem.Example
 
         private void Start()
         {
-            // 不使用静态单例兜底，避免测试场景掩盖注入配置或时序错误。
+            // 场景组件从 Start 起即可安全使用注入完成的 IUIManager。
             if (_ui == null)
             {
                 Debug.LogError("[WindowTestScenePresenter] IUIManager 未注入，请确认 UISystemScope 已初始化场景对象。");
@@ -68,7 +63,7 @@ namespace Game.UISystem.Example
 
             settingsButton.onClick.AddListener(() => OpenSettings().Forget());
             fullScreenInfoButton.onClick.AddListener(
-                () => OpenNoMaskFullScreenTest().Forget(Debug.LogException));
+                () => OpenFrame(UIWindowId.FullScreenInfoTest, "FullScreen · 信息页").Forget());
             fullScreenListButton.onClick.AddListener(
                 () => OpenFrame(UIWindowId.FullScreenListTest, "FullScreen · 列表页").Forget());
 
@@ -79,11 +74,11 @@ namespace Game.UISystem.Example
                 () => OpenFrame(UIWindowId.NoneLoadingTest, "None · 加载提示").Forget());
             commonToastButton.onClick.AddListener(ShowCommonToast);
             dialogOcclusionButton.onClick.AddListener(
-                () => OpenDialogOcclusionTest(largeOverSmall: true).Forget(Debug.LogException));
+                () => OpenDialogStackExample(largeOverSmall: true).Forget(Debug.LogException));
             reverseDialogOcclusionButton.onClick.AddListener(
-                () => OpenDialogOcclusionTest(largeOverSmall: false).Forget(Debug.LogException));
+                () => OpenDialogStackExample(largeOverSmall: false).Forget(Debug.LogException));
             fullScreenOcclusionButton.onClick.AddListener(
-                () => OpenFullScreenOcclusionTest().Forget(Debug.LogException));
+                () => OpenFullScreenStackExample().Forget(Debug.LogException));
         }
 
         private async UniTaskVoid OpenConfirm()
@@ -94,7 +89,7 @@ namespace Game.UISystem.Example
                 new ConfirmParam
                 {
                     Title = "删除确认",
-                    Message = "确定要删除这条测试存档吗？\n此操作仅用于验证弹窗返回值。",
+                    Message = "确定要删除这条示例存档吗？\n这个弹窗演示如何接收 bool 返回值。",
                     Confirm = "删除",
                     Cancel = "取消"
                 });
@@ -116,7 +111,7 @@ namespace Game.UISystem.Example
                 new TipsParam
                 {
                     Title = "新手提示",
-                    Message = "这是无底框窗口的参数与完成回调测试。",
+                    Message = "这个无底框窗口演示参数传入与完成回调。",
                     OkText = "明白了"
                 });
             SetResult("None · 新手提示：已关闭");
@@ -125,7 +120,7 @@ namespace Game.UISystem.Example
         private async UniTaskVoid OpenFrame(UIWindowId windowId, string label)
         {
             SetResult(label + "：已打开");
-            await _ui.OpenAsync<FrameTestWindow>(windowId);
+            await _ui.OpenAsync<FrameTestWindow, FrameWindowParam, Unit>(windowId, null);
             SetResult(label + "：已关闭");
         }
 
@@ -135,247 +130,47 @@ namespace Game.UISystem.Example
             SetResult("Toast · CommonToast：已显示，将自动关闭");
         }
 
-        private async UniTask OpenDialogOcclusionTest(bool largeOverSmall)
+        private UniTask OpenDialogStackExample(bool largeOverSmall)
         {
-            if (!TryBeginOcclusionTest()) return;
-            CancellationToken token = this.GetCancellationTokenOnDestroy();
-            try
-            {
-                await _ui.CloseAllAsync();
-                // Destroy 会在帧末真正移除节点；必须等旧 Frame/Mask 清零后再打开 A，
-                // 否则上一轮的 B 可能在 A 的首帧短暂残留。
-                await WaitForConditionAsync(
-                    () => _ui.OpenCount == 0 && CountFrames() == 0 && CountMasks(false) == 0,
-                    "清理旧测试窗口", token);
+            UIWindowId primaryId = largeOverSmall
+                ? UIWindowId.DialogCompactTest
+                : UIWindowId.DialogContentTest;
+            UIWindowId secondaryId = largeOverSmall
+                ? UIWindowId.DialogContentTest
+                : UIWindowId.DialogCompactTest;
+            string label = largeOverSmall ? "大 Dialog 覆盖小 Dialog" : "小 Dialog 覆盖大 Dialog";
+            string buttonLabel = largeOverSmall ? "打开大 Dialog" : "打开小 Dialog";
 
-                UIWindowId primaryId = largeOverSmall
-                    ? UIWindowId.DialogCompactTest
-                    : UIWindowId.DialogContentTest;
-                UIWindowId secondaryId = largeOverSmall
-                    ? UIWindowId.DialogContentTest
-                    : UIWindowId.DialogCompactTest;
-                string testLabel = largeOverSmall ? "大窗口覆盖小窗口" : "小窗口覆盖大窗口";
-                int expectedCulledFrames = largeOverSmall ? 1 : 0;
-
-                SetResult($"遮挡测试 · 正在打开{testLabel}的一级窗口");
-                _ui.OpenAsync<FrameTestWindow>(primaryId)
-                    .Forget(Debug.LogException);
-                await WaitForConditionAsync(
-                    () => _ui.OpenCount == 1 && CountVisibleMasks() == 1 &&
-                          AreFramesFullyOpen(1),
-                    "窗口 A 完整打开", token);
-                ConfigurePrimaryWindow(
-                    largeOverSmall ? "打开大 Dialog" : "打开小 Dialog",
-                    secondaryId,
-                    testLabel,
-                    expectedCulledFrames);
-                SetResult($"遮挡测试 · {testLabel}：一级窗口已打开，请点击窗口内按钮");
-            }
-            finally
-            {
-                _occlusionTestRunning = false;
-            }
+            return OpenStackExample(primaryId, secondaryId, label, buttonLabel);
         }
 
-        private async UniTask OpenFullScreenOcclusionTest()
+        private UniTask OpenFullScreenStackExample()
         {
-            if (!TryBeginOcclusionTest()) return;
-            CancellationToken token = this.GetCancellationTokenOnDestroy();
-            try
-            {
-                await _ui.CloseAllAsync();
-                await WaitForConditionAsync(
-                    () => _ui.OpenCount == 0 && CountFrames() == 0 && CountMasks(false) == 0,
-                    "清理旧测试窗口", token);
-
-                SetResult("遮挡测试 · 正在打开窗口 A");
-                _ui.OpenAsync<FrameTestWindow>(UIWindowId.DialogCompactTest)
-                    .Forget(Debug.LogException);
-                await WaitForConditionAsync(
-                    () => _ui.OpenCount == 1 && AreFramesFullyOpen(1),
-                    "窗口 A 完整打开", token);
-                ConfigurePrimaryWindow(
-                    "打开全屏二级窗口",
-                    UIWindowId.FullScreenListTest,
-                    "全屏窗口覆盖 Dialog",
-                    expectedCulledFrames: 1);
-                SetResult("遮挡测试 · 一级 Dialog 已打开，请点击窗口内按钮打开全屏二级窗口");
-            }
-            finally
-            {
-                _occlusionTestRunning = false;
-            }
+            return OpenStackExample(
+                UIWindowId.DialogCompactTest,
+                UIWindowId.FullScreenListTest,
+                "全屏窗口覆盖 Dialog",
+                "打开全屏窗口");
         }
 
-        private void ConfigurePrimaryWindow(
-            string buttonLabel,
-            UIWindowId secondaryWindowId,
-            string secondaryLabel,
-            int expectedCulledFrames)
+        private async UniTask OpenStackExample(
+            UIWindowId primaryId,
+            UIWindowId secondaryId,
+            string label,
+            string buttonLabel)
         {
-            var windows = _ui.UICanvas.GetComponentsInChildren<FrameTestWindow>(true);
-            if (windows.Length != 1)
-                throw new InvalidOperationException(
-                    $"[OcclusionTest] 配置一级窗口按钮时预期 1 个 FrameTestWindow，实际 {windows.Length} 个");
+            await _ui.CloseAllAsync();
+            await UniTask.NextFrame();
 
-            windows[0].ConfigureSecondaryAction(
-                buttonLabel,
-                () => OpenSecondaryWindow(
-                        secondaryWindowId, secondaryLabel, expectedCulledFrames)
-                    .Forget(Debug.LogException));
-        }
-
-        private async UniTask OpenSecondaryWindow(
-            UIWindowId windowId, string label, int expectedCulledFrames)
-        {
-            if (_secondaryWindowOpening || _ui.OpenCount != 1)
-                return;
-
-            _secondaryWindowOpening = true;
-            CancellationToken token = this.GetCancellationTokenOnDestroy();
-            try
-            {
-                SetResult($"遮挡测试 · 正在打开{label}");
-                UniTask windowTask = _ui.OpenAsync<FrameTestWindow>(windowId);
-                await WaitForConditionAsync(
-                    () => _ui.OpenCount == 2 && AreFramesFullyOpen(2) &&
-                          CountCulledFrames() == expectedCulledFrames &&
-                          CountMasks(true) == 1 &&
-                          CountVisibleMasks() == 1,
-                    $"{label}覆盖一级窗口", token);
-
-                bool passed = ValidateSingleVisibleMask(label);
-                SetResult($"遮挡测试 · {label}：{(passed ? "通过" : "未通过")}；"
-                          + "关闭二级窗口后可再次点击一级窗口按钮");
-                if (!passed)
-                    Debug.LogError($"[OcclusionTest] {label}覆盖展示未通过");
-
-                await windowTask;
-                SetResult($"遮挡测试 · {label}已关闭，可再次点击一级窗口按钮");
-            }
-            finally
-            {
-                _secondaryWindowOpening = false;
-            }
-        }
-
-        private async UniTask OpenNoMaskFullScreenTest()
-        {
-            if (!TryBeginOcclusionTest()) return;
-            CancellationToken token = this.GetCancellationTokenOnDestroy();
-            SetResult("Mask 测试 · 信息页按窗口配置不创建遮罩");
-            try
-            {
-                await _ui.CloseAllAsync();
-                _ui.OpenAsync<FrameTestWindow>(UIWindowId.FullScreenInfoTest)
-                    .Forget(Debug.LogException);
-                await WaitForConditionAsync(() => _ui.OpenCount == 1, "无 Mask 全屏打开", token);
-
-                int maskCount = CountMasks(false);
-                bool passed = maskCount == 0;
-                SetResult($"Mask 测试 · 无遮罩窗口：{(passed ? "通过" : "未通过")}，实际 Mask {maskCount}/0");
-                if (!passed)
-                    Debug.LogError($"[OcclusionTest] 无遮罩窗口预期 0 个 Mask，实际 {maskCount} 个");
-                await _ui.CloseAllAsync();
-            }
-            finally
-            {
-                _occlusionTestRunning = false;
-            }
-        }
-
-        private bool TryBeginOcclusionTest()
-        {
-            if (_occlusionTestRunning)
-            {
-                SetResult("遮挡测试正在运行，请等待当前用例结束");
-                return false;
-            }
-            _occlusionTestRunning = true;
-            return true;
-        }
-
-        private async UniTask WaitForConditionAsync(
-            Func<bool> condition, string stage, CancellationToken token, float timeoutSeconds = 3f)
-        {
-            float deadline = Time.realtimeSinceStartup + timeoutSeconds;
-            int stableFrames = 0;
-            while (stableFrames < 2)
-            {
-                token.ThrowIfCancellationRequested();
-                if (Time.realtimeSinceStartup >= deadline)
-                    throw new TimeoutException($"[OcclusionTest] 等待“{stage}”超时");
-                stableFrames = condition() ? stableFrames + 1 : 0;
-                await UniTask.Yield(PlayerLoopTiming.Update, token);
-            }
-        }
-
-        private bool ValidateSingleVisibleMask(string label)
-        {
-            int visibleMasks = CountVisibleMasks();
-            bool passed = visibleMasks == 1;
-            if (!passed)
-                Debug.LogError($"[OcclusionTest] {label} Mask 交接异常：可见数量 {visibleMasks}/1");
-            return passed;
-        }
-
-        private int CountFrames()
-        {
-            if (_ui?.UICanvas == null) return 0;
-            return _ui.UICanvas.GetComponentsInChildren<UIWindowFrame>(true).Length;
-        }
-
-        private bool AreFramesFullyOpen(int expectedCount)
-        {
-            if (_ui?.UICanvas == null) return false;
-            var frames = _ui.UICanvas.GetComponentsInChildren<UIWindowFrame>(true);
-            if (frames.Length != expectedCount) return false;
-
-            for (int i = 0; i < frames.Length; i++)
-            {
-                if (!frames[i].TryGetComponent<CanvasGroup>(out var canvasGroup) ||
-                    canvasGroup.alpha < 0.999f)
-                    return false;
-                if (frames[i].transform is RectTransform rect &&
-                    (Mathf.Abs(rect.localScale.x - 1f) > 0.001f ||
-                     Mathf.Abs(rect.localScale.y - 1f) > 0.001f))
-                    return false;
-            }
-            return true;
-        }
-
-        private int CountCulledFrames()
-        {
-            if (_ui?.UICanvas == null) return 0;
-            int count = 0;
-            var frames = _ui.UICanvas.GetComponentsInChildren<UIWindowFrame>(true);
-            for (int i = 0; i < frames.Length; i++)
-            {
-                var renderers = frames[i].GetComponentsInChildren<CanvasRenderer>(true);
-                bool allCulled = renderers.Length > 0;
-                for (int j = 0; j < renderers.Length; j++)
-                    allCulled &= renderers[j] == null || renderers[j].cull;
-                if (allCulled) count++;
-            }
-            return count;
-        }
-
-        private int CountVisibleMasks() => CountMasks(false) - CountMasks(true);
-
-        private int CountMasks(bool culledOnly)
-        {
-            if (_ui?.UICanvas == null)
-                return 0;
-
-            int count = 0;
-            var renderers = _ui.UICanvas.GetComponentsInChildren<CanvasRenderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                if (renderers[i] != null && renderers[i].gameObject.name == "__Mask__" &&
-                    (!culledOnly || renderers[i].cull))
-                    count++;
-            }
-            return count;
+            SetResult($"窗口叠加示例 · {label}：请点击一级窗口内的按钮");
+            await _ui.OpenAsync<FrameTestWindow, FrameWindowParam, Unit>(
+                primaryId,
+                new FrameWindowParam
+                {
+                    SecondaryButtonLabel = buttonLabel,
+                    SecondaryAction = () => OpenFrame(secondaryId, label).Forget()
+                });
+            SetResult($"窗口叠加示例 · {label}：一级窗口已关闭");
         }
 
         private void SetResult(string value)

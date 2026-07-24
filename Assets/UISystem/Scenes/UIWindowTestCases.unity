@@ -1370,8 +1370,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u6BCF\u4E2A\u5165\u53E3\u5BF9\u5E94\u4E00\u4E2A\u56FA\u5B9A\u7A97\u53E3\uFF0C\u7528\u4E8E\u6838\u5BF9
-    Frame\u3001\u5185\u5BB9\u5C3A\u5BF8\u3001\u8FD4\u56DE\u503C\u4E0E\u5173\u95ED\u884C\u4E3A\u3002"
+  m_text: "\u6BCF\u4E2A\u5165\u53E3\u5C55\u793A\u4E00\u79CD\u7A97\u53E3\u7528\u6CD5\uFF0C\u5305\u62EC\u53C2\u6570\u4F20\u9012\u3001\u8FD4\u56DE\u503C\u3001\u5173\u95ED\u4E0E\u7A97\u53E3\u53E0\u52A0\u3002"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 463a7cd316b6a4e4d925d461839be2f0, type: 2}
   m_sharedMaterial: {fileID: 3007187807192036765, guid: 463a7cd316b6a4e4d925d461839be2f0, type: 2}
@@ -3971,7 +3970,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: UI SYSTEM  /  TEST CASES
+  m_text: UI SYSTEM  /  EXAMPLES
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 463a7cd316b6a4e4d925d461839be2f0, type: 2}
   m_sharedMaterial: {fileID: 3007187807192036765, guid: 463a7cd316b6a4e4d925d461839be2f0, type: 2}

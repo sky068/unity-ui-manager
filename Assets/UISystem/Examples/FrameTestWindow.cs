@@ -6,58 +6,42 @@ using UnityEngine.UI;
 
 namespace Game.UISystem.Example
 {
-    /// <summary>三种 Frame 创建测试共用的轻量窗口脚本。</summary>
-    public class FrameTestWindow : UIWindow
+    public sealed class FrameWindowParam
+    {
+        public string SecondaryButtonLabel;
+        public Action SecondaryAction;
+    }
+
+    /// <summary>三种 Frame 示例共用的轻量窗口脚本。</summary>
+    public class FrameTestWindow : UIWindow<FrameWindowParam, Unit>
     {
         [SerializeField] private string windowTitle = "Frame Test";
         [SerializeField] private Button closeButton;
-        [SerializeField] private Button secondaryButton;
-        [SerializeField] private TMP_Text secondaryButtonLabel;
 
+        private Button _secondaryButton;
         private Action _secondaryAction;
-        private RectTransform _messageRect;
-        private Vector2 _messageOffsetMin;
 
-        protected override void OnInit(Unit _)
+        protected override void OnInit(FrameWindowParam param)
         {
             SetTitle(windowTitle);
             if (closeButton != null)
                 closeButton.onClick.AddListener(HandleClose);
-            EnsureSecondaryButton();
-            if (secondaryButton != null)
-            {
-                secondaryButton.gameObject.SetActive(false);
-                secondaryButton.onClick.AddListener(HandleSecondaryAction);
-            }
-        }
 
-        public void ConfigureSecondaryAction(string label, Action action)
-        {
-            _secondaryAction = action;
-            if (secondaryButtonLabel != null)
-                secondaryButtonLabel.text = label ?? string.Empty;
-            if (secondaryButton != null)
-                secondaryButton.gameObject.SetActive(action != null);
-            if (_messageRect != null)
-            {
-                var offset = _messageOffsetMin;
-                if (action != null)
-                    offset.y = Mathf.Max(offset.y, 68f);
-                _messageRect.offsetMin = offset;
-            }
-        }
-
-        private void EnsureSecondaryButton()
-        {
-            if (secondaryButton != null)
+            if (param?.SecondaryAction == null)
                 return;
 
+            _secondaryAction = param.SecondaryAction;
+            _secondaryButton = CreateSecondaryButton(param.SecondaryButtonLabel);
+            _secondaryButton.onClick.AddListener(HandleSecondaryAction);
+        }
+
+        private Button CreateSecondaryButton(string buttonLabel)
+        {
             var sourceText = GetComponentInChildren<TMP_Text>(true);
             if (sourceText != null)
-            {
-                _messageRect = sourceText.rectTransform;
-                _messageOffsetMin = _messageRect.offsetMin;
-            }
+                sourceText.rectTransform.offsetMin = new Vector2(
+                    sourceText.rectTransform.offsetMin.x,
+                    Mathf.Max(sourceText.rectTransform.offsetMin.y, 68f));
 
             var buttonGo = new GameObject(
                 "OpenSecondaryButton",
@@ -66,6 +50,7 @@ namespace Game.UISystem.Example
                 typeof(Image),
                 typeof(Button));
             buttonGo.transform.SetParent(transform, false);
+
             var buttonRect = (RectTransform)buttonGo.transform;
             buttonRect.anchorMin = new Vector2(0.5f, 0f);
             buttonRect.anchorMax = new Vector2(0.5f, 0f);
@@ -73,13 +58,13 @@ namespace Game.UISystem.Example
             buttonRect.anchoredPosition = new Vector2(0f, 14f);
             buttonRect.sizeDelta = new Vector2(240f, 44f);
 
-            var image = buttonGo.GetComponent<Image>();
-            image.color = new Color(0.12f, 0.48f, 0.9f, 1f);
-            secondaryButton = buttonGo.GetComponent<Button>();
+            buttonGo.GetComponent<Image>().color = new Color(0.12f, 0.48f, 0.9f, 1f);
+            var button = buttonGo.GetComponent<Button>();
 
             var labelGo = new GameObject(
                 "Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             labelGo.transform.SetParent(buttonGo.transform, false);
+
             var labelRect = (RectTransform)labelGo.transform;
             labelRect.anchorMin = Vector2.zero;
             labelRect.anchorMax = Vector2.one;
@@ -92,23 +77,25 @@ namespace Game.UISystem.Example
                 label.font = sourceText.font;
                 label.fontSharedMaterial = sourceText.fontSharedMaterial;
             }
+            label.text = buttonLabel ?? string.Empty;
             label.fontSize = 18f;
             label.color = Color.white;
             label.alignment = TextAlignmentOptions.Center;
             label.raycastTarget = false;
-            secondaryButtonLabel = label;
+
+            return button;
         }
 
         private void OnDestroy()
         {
             if (closeButton != null)
                 closeButton.onClick.RemoveListener(HandleClose);
-            if (secondaryButton != null)
-                secondaryButton.onClick.RemoveListener(HandleSecondaryAction);
+            if (_secondaryButton != null)
+                _secondaryButton.onClick.RemoveListener(HandleSecondaryAction);
             _secondaryAction = null;
         }
 
-        private void HandleClose() => Close();
+        private void HandleClose() => Complete(Unit.Default);
         private void HandleSecondaryAction() => _secondaryAction?.Invoke();
     }
 }

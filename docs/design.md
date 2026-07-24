@@ -10,7 +10,7 @@
 - **VContainer**：实例化窗口内容并支持依赖注入。
 - **R3**：用 `Unit` 表示无参数或无返回值。
 
-可以直接打开 `Assets/UISystem/Scenes/UIWindowTestCases.unity` 运行。场景中的按钮分别测试已经注册的 Dialog、FullScreen、None 窗口和 Common Toast。
+可以直接打开 `Assets/UISystem/Scenes/UIWindowTestCases.unity` 运行。场景中的按钮分别展示已经注册的 Dialog、FullScreen、None 窗口和 Common Toast。
 
 ## 2. 资源结构
 
@@ -18,7 +18,7 @@
 Assets/
 ├── UISystem/
 │   ├── Runtime/                  # UIManager、UIWindow 等核心代码
-│   ├── Examples/                 # 示例窗口与测试场景 Presenter
+│   ├── Examples/                 # 示例窗口与 Demo 场景 Presenter
 │   ├── Config/                   # 注册表和窗口 Style
 │   ├── Art/Sprites/              # UI 图片资源
 │   ├── Prefabs/
@@ -257,15 +257,14 @@ bool received = await _uiManager
         new RewardParam { Gold = 100 });
 ```
 
-### 第六步：在 Demo 场景验证
+### 第六步：在 Demo 场景体验
 
-在 `UIWindowTestCases.unity` 中增加测试按钮，绑定到 Presenter，并验证：
+在 `UIWindowTestCases.unity` 中增加示例按钮并绑定到 Presenter，即可直观看到：
 
-- Prefab 能被加载。
-- 参数正确显示。
-- 确认、取消、遮罩、ESC 和 Frame 关闭按钮行为正确。
-- 返回值正确。
-- 连续打开多个窗口时只有栈顶窗口可交互。
+- Prefab 的加载与展示。
+- 参数传入和返回值接收。
+- 确认、取消、遮罩、ESC 和 Frame 关闭按钮的用法。
+- 多个窗口的叠加与栈顶交互效果。
 
 ## 5. 注册与加载规则
 
