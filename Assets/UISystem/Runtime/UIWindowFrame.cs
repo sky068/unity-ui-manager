@@ -30,6 +30,9 @@ namespace Game.UISystem
         [Tooltip("该 Prefab 对应的框架类型")]
         [SerializeField] private UIFrameType frameType = UIFrameType.Dialog;
 
+        [Tooltip("可确认完全不透明的矩形区域。HideFullyCovered 只使用此区域；为空时不会裁剪下层窗口")]
+        [SerializeField] private RectTransform occlusionRect;
+
         [Tooltip("无法获取内容 preferred size 时的回退窗口尺寸")]
         [SerializeField] private Vector2 minSize = new Vector2(320f, 160f);
 
@@ -38,6 +41,7 @@ namespace Game.UISystem
 
         public RectTransform ContentRoot => contentRoot;
         public UIFrameType FrameType => frameType;
+        public RectTransform OcclusionRect => occlusionRect;
 
         public void PrepareContent(RectTransform content)
         {

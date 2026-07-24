@@ -73,11 +73,15 @@ namespace Game.UISystem
         public readonly GameObject MaskGo;
         public readonly CanvasGroup CanvasGroup;
         public readonly UIWindowStyle Style;
+        public readonly UILayer Layer;
+        public readonly UIOcclusionMode OcclusionMode;
         public readonly UniTaskCompletionSource<R3.Unit> Closed =
             new UniTaskCompletionSource<R3.Unit>();
         public readonly bool ParticipatesInWindowStack;
         public bool IsInStack { get; set; }
         public bool OpenAnimationComplete { get; set; }
+        public bool IsFrameCulled { get; private set; }
+        public bool IsMaskCulled { get; private set; }
 
         public StackEntry(
             UIWindowBase window,
@@ -86,6 +90,8 @@ namespace Game.UISystem
             GameObject maskGo,
             CanvasGroup canvasGroup,
             UIWindowStyle style,
+            UILayer layer,
+            UIOcclusionMode occlusionMode,
             bool participatesInWindowStack)
         {
             Window = window;
@@ -94,6 +100,8 @@ namespace Game.UISystem
             MaskGo = maskGo;
             CanvasGroup = canvasGroup;
             Style = style;
+            Layer = layer;
+            OcclusionMode = occlusionMode;
             ParticipatesInWindowStack = participatesInWindowStack;
         }
 
@@ -127,6 +135,47 @@ namespace Game.UISystem
 
             if (MaskGo != null && MaskGo.TryGetComponent<Image>(out var image))
                 image.raycastTarget = isActiveTop;
+            if (MaskGo != null && MaskGo.TryGetComponent<Button>(out var button))
+                button.interactable = isActiveTop;
+        }
+
+        public void ApplyMaskTransitionBlocker()
+        {
+            // 退场交接期间遮罩仍应吞掉点击，但不能把这次点击解释为关闭下层窗口。
+            if (MaskGo != null && MaskGo.TryGetComponent<Image>(out var image))
+                image.raycastTarget = true;
+            if (MaskGo != null && MaskGo.TryGetComponent<Button>(out var button))
+                button.interactable = false;
+        }
+
+        public void ApplyRenderCulling(bool cullFrame, bool cullMask)
+        {
+            // 已显示且状态不变时无需扫描；被裁剪节点仍会刷新一次，以覆盖 TMP 在文字
+            // 变化后动态创建的子 Renderer。栈变化频率低，这里优先保证恢复显示正确。
+            if (cullFrame || IsFrameCulled != cullFrame)
+                SetCulled(FrameGo, cullFrame);
+            if (cullMask || IsMaskCulled != cullMask)
+                SetCulled(MaskGo, cullMask);
+            IsFrameCulled = cullFrame;
+            IsMaskCulled = cullMask;
+        }
+
+        private static void SetCulled(GameObject root, bool culled)
+        {
+            if (root == null) return;
+            var renderers = root.GetComponentsInChildren<CanvasRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var renderer = renderers[i];
+                if (renderer == null || renderer.cull == culled)
+                    continue;
+
+                renderer.cull = culled;
+                // Graphic 会在裁剪期间继续变脏；通知它裁剪状态变化，恢复时才能重建
+                // TMP 字形、材质和顶点，而不是继续显示隐藏前的旧内容。
+                if (renderer.TryGetComponent<Graphic>(out var graphic))
+                    graphic.OnCullingChanged();
+            }
         }
     }
 
@@ -142,6 +191,9 @@ namespace Game.UISystem
         // 活动集合包含所有实例，包括不进入主栈的 Toast。
         // 切场景调用 CloseAllAsync 时必须以它为准，不能只遍历 _stack。
         private readonly HashSet<StackEntry> _activeEntries = new HashSet<StackEntry>();
+        private StackEntry _maskOwner;
+        private bool _isClosingAll;
+        private UniTaskCompletionSource<R3.Unit> _closeAllCompletion;
 
         public int OpenCount => _stack.Count;
         public Canvas UICanvas => _layerConfig.UICanvas;
@@ -206,6 +258,7 @@ namespace Game.UISystem
             var config = GetValidatedConfig(windowId, layerOverride);
             var style = config.style;
             var layer = layerOverride ?? config.defaultLayer;
+            ValidateLayerOpenOrder(windowId, layer);
             var layerRoot = _layerConfig.GetLayerRoot(layer);
             if (layerRoot == null)
                 throw new InvalidOperationException(
@@ -248,12 +301,17 @@ namespace Game.UISystem
                         $"[UIManager] Content '{config.contentPrefabAddress}' 缺少 {typeof(TWindow).Name}");
 
                 var resultSource = new UniTaskCompletionSource<TResult>();
-                if (style.showMask)
+                // Style 定义遮罩外观和能力，窗口条目决定本实例是否实际创建遮罩。
+                if (style.showMask && config.showMask)
                 {
+                    // 继承当前唯一可见 Mask 的完整 RGBA；新窗口接管后再插值到自身目标色，
+                    // 避免不同 Style 之间切换时发生一帧跳色或透明度突变。
+                    Color initialMaskColor = GetVisibleMaskColor(style.maskColor);
                     maskGo = UIAnimator.CreateMask(
                         layerRoot,
                         style,
-                        () => window.TryRequestClose());
+                        () => window.TryRequestClose(),
+                        initialMaskColor);
                     maskGo.transform.SetSiblingIndex(frameGo.transform.GetSiblingIndex());
                 }
 
@@ -266,6 +324,8 @@ namespace Game.UISystem
                     maskGo,
                     canvasGroup,
                     style,
+                    layer,
+                    config.occlusionMode,
                     participatesInWindowStack);
                 openAnimationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
                     window.GetCancellationTokenOnDestroy());
@@ -294,8 +354,8 @@ namespace Game.UISystem
                         UIAnimator.PlayOpenAsync(
                             frameRect, canvasGroup, style, openAnimationCancellation.Token),
                         maskGo != null
-                            ? UIAnimator.FadeMaskAsync(
-                                maskGo, style.maskColor.a, style.openDuration,
+                            ? UIAnimator.AnimateMaskColorAsync(
+                                maskGo, style.maskColor, style.openDuration,
                                 openAnimationCancellation.Token)
                             : UniTask.CompletedTask);
                 }
@@ -305,6 +365,7 @@ namespace Game.UISystem
                     // 忽略本次取消异常，随后等待 resultSource 并进入统一退场和清理流程。
                 }
                 stackEntry.OpenAnimationComplete = true;
+                RecalculateOcclusion();
                 stackEntry.ApplyInteraction(
                     !stackEntry.ParticipatesInWindowStack || IsTop(stackEntry));
 
@@ -346,25 +407,48 @@ namespace Game.UISystem
         public async UniTask CloseAllAsync()
         {
             if (_activeEntries.Count == 0) return;
-
-            // 使用快照是必要的：每个窗口退场完成后都会从 _activeEntries 删除自身，
-            // 直接遍历原集合会在 await 期间产生“集合已修改”异常。
-            var entries = new List<StackEntry>(_activeEntries);
-            var closeTasks = new UniTask[entries.Count];
-            for (int i = 0; i < entries.Count; i++)
+            if (_isClosingAll)
             {
-                entries[i].Window.TryRequestClose();
-                closeTasks[i] = entries[i].Closed.Task;
+                if (_closeAllCompletion != null)
+                    await _closeAllCompletion.Task;
+                return;
             }
 
-            // 并发退场，避免窗口较多时逐个等待导致切场景耗时累加。
-            // 返回时快照中的实例均已完成 CleanupEntry。
-            await UniTask.WhenAll(closeTasks);
+            _isClosingAll = true;
+            _closeAllCompletion = new UniTaskCompletionSource<R3.Unit>();
+            // 批量关闭期间冻结当前唯一 Mask owner。HashSet 的枚举顺序不确定，不能让
+            // 每个并发退场窗口依次抢占遮罩，否则会产生随机闪烁。
+            _maskOwner = ResolveMaskOwner();
+            try
+            {
+                // 使用快照是必要的：每个窗口退场完成后都会从 _activeEntries 删除自身，
+                // 直接遍历原集合会在 await 期间产生“集合已修改”异常。
+                var entries = new List<StackEntry>(_activeEntries);
+                var closeTasks = new UniTask[entries.Count];
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    entries[i].Window.TryRequestClose();
+                    closeTasks[i] = entries[i].Closed.Task;
+                }
+
+                // 并发退场，避免窗口较多时逐个等待导致切场景耗时累加。
+                // 返回时快照中的实例均已完成 CleanupEntry。
+                await UniTask.WhenAll(closeTasks);
+            }
+            finally
+            {
+                _maskOwner = null;
+                _isClosingAll = false;
+                _closeAllCompletion.TrySetResult(R3.Unit.Default);
+                _closeAllCompletion = null;
+            }
         }
 
         public void CloseAllImmediately()
         {
             if (_activeEntries.Count == 0) return;
+
+            _maskOwner = null;
 
             // 仍使用快照，CleanupEntry 会同步修改 _activeEntries。
             // 立即清理用于场景边界，不播放动画，避免旧场景 UI 短暂覆盖新场景。
@@ -436,6 +520,8 @@ namespace Game.UISystem
                 throw new InvalidOperationException($"[UIManager] Window '{windowId}' 的 FrameType 非法");
             if (!Enum.IsDefined(typeof(WindowAnimationType), config.style.animationType))
                 throw new InvalidOperationException($"[UIManager] Window '{windowId}' 的动画类型非法");
+            if (!Enum.IsDefined(typeof(UIOcclusionMode), config.occlusionMode))
+                throw new InvalidOperationException($"[UIManager] Window '{windowId}' 的遮挡策略非法");
             if (config.style.openDuration < 0f || config.style.closeDuration < 0f ||
                 float.IsNaN(config.style.openDuration) || float.IsNaN(config.style.closeDuration) ||
                 float.IsInfinity(config.style.openDuration) || float.IsInfinity(config.style.closeDuration))
@@ -450,7 +536,29 @@ namespace Game.UISystem
             if (!IsFinite(config.style.maskColor.r) || !IsFinite(config.style.maskColor.g) ||
                 !IsFinite(config.style.maskColor.b) || !IsFinite(config.style.maskColor.a))
                 throw new InvalidOperationException($"[UIManager] Window '{windowId}' 的遮罩颜色非法");
+            if (config.style.maskColor.r < 0f || config.style.maskColor.r > 1f ||
+                config.style.maskColor.g < 0f || config.style.maskColor.g > 1f ||
+                config.style.maskColor.b < 0f || config.style.maskColor.b > 1f ||
+                config.style.maskColor.a < 0f || config.style.maskColor.a > 1f)
+                throw new InvalidOperationException($"[UIManager] Window '{windowId}' 的遮罩颜色必须在 0 到 1 之间");
+            if (config.occlusionMode == UIOcclusionMode.HideAllBelow &&
+                (config.style.frameType != UIFrameType.FullScreen || !config.allowFullOcclusion))
+                throw new InvalidOperationException(
+                    $"[UIManager] Window '{windowId}' 只有在 FullScreen 且明确声明不透明时才能使用 HideAllBelow");
             return config;
+        }
+
+        private void ValidateLayerOpenOrder(UIWindowId windowId, UILayer layer)
+        {
+            // Toast 独立于主窗口栈。主栈只允许同层或向更高层打开，防止视觉上位于
+            // 后方的低层窗口成为逻辑栈顶并错误接管输入、ESC 和 Mask。
+            if (layer == UILayer.Toast || _stack.Count == 0)
+                return;
+
+            UILayer currentLayer = _stack.Peek().Layer;
+            if ((int)layer < (int)currentLayer)
+                throw new InvalidOperationException(
+                    $"[UIManager] Window '{windowId}' 不能在活动的 {currentLayer} 窗口上方打开更低的 {layer} Layer");
         }
 
         private static bool IsFinite(float value) =>
@@ -474,7 +582,10 @@ namespace Game.UISystem
                 _stack.Peek().ApplyInteraction(false);
             _stack.Push(entry);
             entry.IsInStack = true;
+            if (entry.MaskGo != null)
+                _maskOwner = entry;
             entry.ApplyInteraction(true);
+            RecalculateOcclusion();
         }
 
         private bool IsTop(StackEntry entry) =>
@@ -496,6 +607,12 @@ namespace Game.UISystem
                 entry.Window.MarkClosing();
                 entry.Window.NotifyClosing();
                 entry.ApplyInteraction(false);
+                if (entry.MaskGo == null && IsTop(entry) && _maskOwner != null)
+                    _maskOwner.ApplyMaskTransitionBlocker();
+                // 先完成 Mask 所有权交接，再恢复下层渲染。交接会复制完整 RGBA，
+                // 因此同一帧始终只有一个连续颜色的可见遮罩。
+                UniTask maskTransition = PrepareMaskForClosing(entry);
+                RecalculateOcclusion();
 
                 var frameRect = entry.FrameGo != null
                     ? entry.FrameGo.GetComponent<RectTransform>()
@@ -506,13 +623,7 @@ namespace Game.UISystem
                         entry.CanvasGroup,
                         entry.Style,
                         entry.Window.GetCancellationTokenOnDestroy()),
-                    entry.MaskGo != null
-                        ? UIAnimator.FadeMaskAsync(
-                            entry.MaskGo,
-                            0f,
-                            entry.Style.closeDuration,
-                            entry.Window.GetCancellationTokenOnDestroy())
-                        : UniTask.CompletedTask);
+                    maskTransition);
             }
             catch (OperationCanceledException) when (
                 entry.Window == null || entry.Window.IsCloseRequested)
@@ -533,12 +644,18 @@ namespace Game.UISystem
 
             _activeEntries.Remove(entry);
 
+            if (ReferenceEquals(_maskOwner, entry))
+                _maskOwner = _isClosingAll ? null : FindNextMaskOwner(entry);
+
             bool wasTop = entry.IsInStack && IsTop(entry);
             if (entry.IsInStack)
             {
                 RemoveEntry(entry);
                 entry.IsInStack = false;
             }
+
+            // 不依赖“只恢复前一个窗口”的增量状态；任意关闭顺序都从完整栈重新推导。
+            RecalculateOcclusion();
 
             if (entry.MaskGo != null) UnityEngine.Object.Destroy(entry.MaskGo);
             if (entry.FrameGo != null) UnityEngine.Object.Destroy(entry.FrameGo);
@@ -574,6 +691,210 @@ namespace Game.UISystem
 
             if (!found)
                 Debug.LogWarning("[UIManager] 尝试移除一个不在栈中的窗口");
+        }
+
+        private void RecalculateOcclusion()
+        {
+            if (_stack.Count == 0)
+            {
+                _maskOwner = null;
+                return;
+            }
+
+            // Stack 枚举顺序为栈顶到栈底。只有动画完成、未开始关闭且自身可见的窗口
+            // 才能成为遮挡源；这样开场/退场动画不会露出透明空洞。
+            var occluders = new List<StackEntry>(_stack.Count);
+            if (!_isClosingAll && (_maskOwner == null || !_maskOwner.IsInStack ||
+                                   _maskOwner.MaskGo == null))
+                _maskOwner = ResolveMaskOwner();
+            foreach (var entry in _stack)
+            {
+                bool cullFrame = false;
+                // Mask 不参与叠加：最上方有效窗口独占遮罩。开场时新窗口立即接管；
+                // 退场开始后则交还给下方窗口，没有下方 Mask 时保留自身完成淡出。
+                bool cullMask = entry.MaskGo != null &&
+                                !ReferenceEquals(entry, _maskOwner);
+
+                for (int i = 0; i < occluders.Count; i++)
+                {
+                    var occluder = occluders[i];
+                    if (!IsVisuallyAbove(occluder, entry))
+                        continue;
+
+                    if (occluder.OcclusionMode == UIOcclusionMode.HideAllBelow)
+                    {
+                        cullFrame = true;
+                        cullMask = true;
+                        break;
+                    }
+
+                    if (occluder.OcclusionMode == UIOcclusionMode.HideFullyCovered &&
+                        FullyCovers(occluder.Frame.OcclusionRect,
+                            entry.FrameGo != null
+                                ? entry.FrameGo.GetComponent<RectTransform>()
+                                : null))
+                    {
+                        // Frame 被完全覆盖时，它自己的 Mask 也必须一并裁剪；否则多级
+                        // Dialog 会叠加暗度，既改变视觉结果，也保留了不必要的 Draw Call。
+                        cullFrame = true;
+                        cullMask = true;
+                    }
+                }
+
+                entry.ApplyRenderCulling(cullFrame, cullMask);
+
+                bool canOcclude = !cullFrame && entry.OpenAnimationComplete &&
+                                  !entry.Window.IsCloseRequested && !entry.Window.IsClosing &&
+                                  entry.OcclusionMode != UIOcclusionMode.KeepVisible;
+                if (canOcclude)
+                    occluders.Add(entry);
+            }
+        }
+
+        private StackEntry ResolveMaskOwner()
+        {
+            foreach (var entry in _stack)
+            {
+                if (entry.MaskGo == null || entry.Window.IsClosing)
+                    continue;
+                return entry;
+            }
+            return null;
+        }
+
+        private StackEntry FindNextMaskOwner(StackEntry excluding)
+        {
+            var occluders = new List<StackEntry>();
+            foreach (var entry in _stack)
+            {
+                if (ReferenceEquals(entry, excluding) || entry.Window.IsClosing)
+                    continue;
+
+                if (entry.MaskGo != null)
+                {
+                    bool hidden = false;
+                    for (int i = 0; i < occluders.Count; i++)
+                    {
+                        var occluder = occluders[i];
+                        if (occluder.OcclusionMode == UIOcclusionMode.HideAllBelow ||
+                            (occluder.OcclusionMode == UIOcclusionMode.HideFullyCovered &&
+                             FullyCovers(occluder.Frame.OcclusionRect,
+                                 entry.FrameGo != null
+                                     ? entry.FrameGo.GetComponent<RectTransform>()
+                                     : null)))
+                        {
+                            hidden = true;
+                            break;
+                        }
+                    }
+                    if (!hidden)
+                        return entry;
+                }
+
+                if (entry.OpenAnimationComplete &&
+                    entry.OcclusionMode != UIOcclusionMode.KeepVisible)
+                    occluders.Add(entry);
+            }
+            return null;
+        }
+
+        private UniTask PrepareMaskForClosing(StackEntry entry)
+        {
+            if (entry.MaskGo == null || !ReferenceEquals(_maskOwner, entry))
+                return UniTask.CompletedTask;
+
+            CancellationToken token = entry.Window.GetCancellationTokenOnDestroy();
+            if (_isClosingAll)
+            {
+                entry.ApplyMaskTransitionBlocker();
+                Color transparent = GetMaskColor(entry.MaskGo, entry.Style.maskColor);
+                transparent.a = 0f;
+                return UIAnimator.AnimateMaskColorAsync(
+                    entry.MaskGo, transparent, entry.Style.closeDuration, token);
+            }
+
+            StackEntry nextOwner = FindNextMaskOwner(entry);
+            if (nextOwner == null)
+            {
+                entry.ApplyMaskTransitionBlocker();
+                Color transparent = GetMaskColor(entry.MaskGo, entry.Style.maskColor);
+                transparent.a = 0f;
+                return UIAnimator.AnimateMaskColorAsync(
+                    entry.MaskGo, transparent, entry.Style.closeDuration, token);
+            }
+
+            Color handoffColor = GetMaskColor(entry.MaskGo, nextOwner.Style.maskColor);
+            if (nextOwner.MaskGo.TryGetComponent<Image>(out var nextImage))
+                nextImage.color = handoffColor;
+            nextOwner.ApplyMaskTransitionBlocker();
+            _maskOwner = nextOwner;
+            return UIAnimator.AnimateMaskColorAsync(
+                nextOwner.MaskGo,
+                nextOwner.Style.maskColor,
+                entry.Style.closeDuration,
+                nextOwner.Window.GetCancellationTokenOnDestroy());
+        }
+
+        private Color GetVisibleMaskColor(Color fallbackTarget)
+        {
+            if (_maskOwner?.MaskGo != null && !_maskOwner.IsMaskCulled)
+                return GetMaskColor(_maskOwner.MaskGo, fallbackTarget);
+
+            Color transparent = fallbackTarget;
+            transparent.a = 0f;
+            return transparent;
+        }
+
+        private static Color GetMaskColor(GameObject maskGo, Color fallback)
+        {
+            return maskGo != null && maskGo.TryGetComponent<Image>(out var image)
+                ? image.color
+                : fallback;
+        }
+
+        private static bool IsVisuallyAbove(StackEntry upper, StackEntry lower)
+        {
+            if (upper?.FrameGo == null || lower?.FrameGo == null)
+                return false;
+
+            Transform upperLayer = upper.FrameGo.transform.parent;
+            Transform lowerLayer = lower.FrameGo.transform.parent;
+            if (upperLayer == null || lowerLayer == null)
+                return false;
+
+            if (ReferenceEquals(upperLayer, lowerLayer))
+                return upper.FrameGo.transform.GetSiblingIndex() >
+                       lower.FrameGo.transform.GetSiblingIndex();
+
+            // Layer 根节点必须处于同一父节点下才可安全比较；结构异常时保守地不裁剪。
+            if (!ReferenceEquals(upperLayer.parent, lowerLayer.parent))
+                return false;
+            return upperLayer.GetSiblingIndex() > lowerLayer.GetSiblingIndex();
+        }
+
+        private static bool FullyCovers(RectTransform opaqueRect, RectTransform targetRect)
+        {
+            if (opaqueRect == null || targetRect == null ||
+                !opaqueRect.gameObject.activeInHierarchy || !targetRect.gameObject.activeInHierarchy)
+                return false;
+
+            var corners = new Vector3[4];
+            targetRect.GetWorldCorners(corners);
+            Rect localOpaqueRect = opaqueRect.rect;
+            const float epsilon = 0.5f;
+            localOpaqueRect.xMin += epsilon;
+            localOpaqueRect.xMax -= epsilon;
+            localOpaqueRect.yMin += epsilon;
+            localOpaqueRect.yMax -= epsilon;
+
+            for (int i = 0; i < corners.Length; i++)
+            {
+                Vector3 localPoint = opaqueRect.InverseTransformPoint(corners[i]);
+                if (!localOpaqueRect.Contains(new Vector2(localPoint.x, localPoint.y)))
+                    return false;
+            }
+
+            return true;
         }
     }
 }

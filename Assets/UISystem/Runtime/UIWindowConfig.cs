@@ -4,6 +4,17 @@ using UnityEngine;
 
 namespace Game.UISystem
 {
+    /// <summary>窗口稳定显示后，对位于其下方窗口采用的渲染裁剪策略。</summary>
+    public enum UIOcclusionMode
+    {
+        /// <summary>保留所有下层渲染。普通 Dialog 的安全默认值。</summary>
+        KeepVisible = 0,
+        /// <summary>仅裁剪被真实不透明区域完全覆盖的下层 Frame 及其遮罩。</summary>
+        HideFullyCovered = 1,
+        /// <summary>裁剪所有视觉层级更低的 Frame 和遮罩。仅用于不透明全屏窗口。</summary>
+        HideAllBelow = 2
+    }
+
     [Serializable]
     public class UIWindowEntry
     {
@@ -18,6 +29,15 @@ namespace Game.UISystem
 
         [Tooltip("默认显示在哪一层")]
         public UILayer defaultLayer = UILayer.Popup;
+
+        [Tooltip("窗口打开动画结束后，是否裁剪被它遮挡的下层窗口渲染")]
+        public UIOcclusionMode occlusionMode = UIOcclusionMode.KeepVisible;
+
+        [Tooltip("确认该 FullScreen 窗口完全不透明，允许 HideAllBelow。透明或不确定时必须关闭")]
+        public bool allowFullOcclusion;
+
+        [Tooltip("是否为该窗口创建背景遮罩；仍需对应 Style 开启遮罩支持")]
+        public bool showMask = true;
     }
 
     /// <summary>
@@ -71,7 +91,8 @@ namespace Game.UISystem
                     continue;
                 }
                 if (string.IsNullOrWhiteSpace(e.contentPrefabAddress) || e.style == null ||
-                    !Enum.IsDefined(typeof(UILayer), e.defaultLayer))
+                    !Enum.IsDefined(typeof(UILayer), e.defaultLayer) ||
+                    !Enum.IsDefined(typeof(UIOcclusionMode), e.occlusionMode))
                 {
                     Debug.LogWarning($"[UIWindowConfig] windowId='{e.windowId}' 配置不完整，已跳过");
                     continue;

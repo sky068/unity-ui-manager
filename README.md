@@ -9,6 +9,7 @@
 - `Dialog`、`FullScreen`、`None` 三种窗口框架
 - Background、Normal、Popup、Loading、Toast、Debug 分层管理
 - 窗口栈、栈顶交互控制及 Esc 返回键关闭
+- 可配置的安全遮挡裁剪，减少被完全覆盖窗口的 Draw Call
 - 遮罩点击、淡入淡出、缩放和 Toast 滑动动画
 - 独立于主窗口栈的自动计时 Toast
 - VContainer 构造注入及场景对象注入
@@ -89,7 +90,7 @@ ui.ShowToast("保存成功", time: ToastDuration.Normal);
 2. 创建继承 `UIWindow` 或 `UIWindow<TParam, TResult>` 的窗口脚本。
 3. 创建内容 Prefab，并放入 `Assets/Resources/UISystem/Windows/`。
 4. 按需创建或复用 `UIWindowStyle`。
-5. 在 `Assets/UISystem/Config/UIWindowConfig.asset` 中注册窗口 ID、Prefab、样式和默认层级。
+5. 在 `Assets/UISystem/Config/UIWindowConfig.asset` 中注册窗口 ID、Prefab、样式、默认层级和遮挡策略。
 6. 通过 `IUIManager.OpenAsync` 打开窗口。
 
 窗口内容应在 `OnInit` 中初始化，在 `OnOpened` 中启动仅应在完整显示后执行的逻辑，在 `OnClosing` 中解绑业务监听。
@@ -113,6 +114,12 @@ Assets/
 ## 设计说明
 
 `UISystemScope` 是全局组合根，负责构建 VContainer、持久化 UI 根节点、注入场景对象并维持唯一 EventSystem。`UIManager` 根据 `UIWindowConfig` 加载 Frame 和内容 Prefab，并负责窗口栈、动画、交互状态与资源清理。
+
+每个窗口可独立配置 `showMask` 和 `occlusionMode`。`showMask` 关闭时不为该窗口创建背景遮罩；对应 Style 的 `showMask` 仍作为全局能力开关和外观配置。普通 Dialog 默认使用 `KeepVisible`；确认存在完整不透明区域的大 Dialog 可使用 `HideFullyCovered`；`HideAllBelow` 仅允许用于 FullScreen，并且必须同时开启 `allowFullOcclusion` 明确确认窗口完全不透明。裁剪通过 `CanvasRenderer.cull` 完成，不会触发下层对象的 `OnDisable/OnEnable`。Frame 被裁剪时它自己的 Mask 会同时裁剪；多层窗口采用单一 Mask 所有者，新旧 Mask 交接会继承完整 RGBA 并插值到目标颜色，避免遮罩叠加、跳色和闪烁。系统仅在开场动画结束后裁剪 Frame，并在退场动画开始前恢复；每次栈变化都会从栈顶重新计算，异常关闭或非栈顶关闭也不会遗留错误状态。
+
+`HideFullyCovered` 只依据 Frame 中显式配置的 `OcclusionRect` 判断，透明圆角和阴影不计入不透明区域；未配置该区域时会保守地保持下层可见。测试场景中直接配置了“大窗口覆盖小窗口”“小窗口覆盖大窗口”“全屏覆盖 Dialog”和无 Mask 信息页入口。点击覆盖用例时只打开一级窗口 A；通过 A 内的按钮手动打开二级窗口 B，便于逐帧观察覆盖关系，并可在关闭 B 后重复测试。
+
+主窗口栈只允许在当前栈顶同层或更高的 Layer 打开新窗口；更低 Layer 会在实例化前抛出明确异常，避免视觉顺序、输入焦点、Esc 和 Mask 所有权错位。Toast 不进入主窗口栈，不受该限制。
 
 业务代码应优先注入 `IUIManager`。`UIManager.Instance` 仅作为非容器代码和旧代码的兼容入口。
 

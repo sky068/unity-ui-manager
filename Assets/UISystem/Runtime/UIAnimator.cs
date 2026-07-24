@@ -5,6 +5,13 @@ using System.Threading;
 
 namespace Game.UISystem
 {
+    internal sealed class UIMaskTransitionState : MonoBehaviour
+    {
+        public int Revision { get; private set; }
+
+        public int BeginTransition() => ++Revision;
+    }
+
     /// <summary>
     /// 负责窗口开关动画和遮罩，与业务逻辑解耦
     /// </summary>
@@ -15,14 +22,14 @@ namespace Game.UISystem
         public static GameObject CreateMask(
             Transform parent,
             UIWindowStyle style,
-            System.Action onMaskClick)
+            System.Action onMaskClick,
+            Color initialColor)
         {
-            return CreateMaskWithColor(parent,
-                new Color(style.maskColor.r, style.maskColor.g, style.maskColor.b, 0f),
+            return CreateMaskWithColor(parent, initialColor,
                 style.closeOnMaskClick ? onMaskClick : null);
         }
 
-        /// <summary>用指定颜色创建遮罩（alpha 初始为 0，由动画渐变到目标值）</summary>
+        /// <summary>用指定初始颜色创建遮罩；后续动画从该颜色的 alpha 开始。</summary>
         public static GameObject CreateMaskWithColor(
             Transform parent,
             Color targetColor,
@@ -38,7 +45,8 @@ namespace Game.UISystem
             rt.offsetMax = Vector2.zero;
 
             var img   = go.AddComponent<Image>();
-            img.color = new Color(targetColor.r, targetColor.g, targetColor.b, 0f); // 初始透明
+            img.color = targetColor;
+            go.AddComponent<UIMaskTransitionState>();
 
             if (onMaskClick != null)
             {
@@ -50,38 +58,35 @@ namespace Game.UISystem
             return go;
         }
 
-        public static async UniTask FadeMaskAsync(
-            GameObject maskGo, float to, float duration, CancellationToken cancellationToken)
+        public static async UniTask AnimateMaskColorAsync(
+            GameObject maskGo, Color to, float duration, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (maskGo == null) return;
             var img     = maskGo.GetComponent<Image>();
             if (img == null) return;
-            var c       = img.color;
-            float from  = c.a;
+            var state   = maskGo.GetOrAddComponent<UIMaskTransitionState>();
+            int revision = state.BeginTransition();
+            Color from  = img.color;
             float elapsed = 0f;
 
             if (duration <= 0f)
             {
-                c.a = to;
-                img.color = c;
+                img.color = to;
                 return;
             }
 
-            while (elapsed < duration && maskGo != null && img != null)
+            while (elapsed < duration && maskGo != null && img != null &&
+                   state != null && state.Revision == revision)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 elapsed += Time.unscaledDeltaTime;
-                c.a      = Mathf.Lerp(from, to, Mathf.Clamp01(elapsed / duration));
-                img.color = c;
+                img.color = Color.Lerp(from, to, Mathf.Clamp01(elapsed / duration));
                 await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
             }
 
-            if (img != null)
-            {
-                c.a       = to;
-                img.color = c;
-            }
+            if (img != null && state != null && state.Revision == revision)
+                img.color = to;
         }
 
         // ── 窗口动画 ─────────────────────────────────────────────────
