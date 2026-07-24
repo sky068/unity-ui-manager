@@ -72,7 +72,7 @@ private void Construct(IUIManager uiManager)
 // 错误：后续加载场景中，此时 _uiManager 可能仍为 null。
 private void Awake()
 {
-    // _uiManager.OpenAsync(...);
+    // _uiManager.Open(...);
 }
 
 // 正确：场景对象执行 Start 时注入已经完成。
@@ -110,8 +110,8 @@ UISystemScope.Instance.InjectGameObject(instance);
 `SettingsWindow` 继承 `UIWindow`：
 
 ```csharp
-await _uiManager.OpenAsync<SettingsWindow>(
-    UIWindowId.SettingWindow);
+var handle = _uiManager.Open(UIWindowId.SettingWindow);
+await handle.Closed; // 仅在调用方需要等待完全关闭时使用
 ```
 
 窗口内部调用 `Close()` 结束。
@@ -122,7 +122,7 @@ await _uiManager.OpenAsync<SettingsWindow>(
 
 ```csharp
 bool confirmed = await _uiManager
-    .OpenAsync<ConfirmWindow, ConfirmParam, bool>(
+    .OpenForResultAsync<ConfirmParam, bool>(
         UIWindowId.ConfirmWindow,
         new ConfirmParam
         {
@@ -134,6 +134,16 @@ bool confirmed = await _uiManager
 ```
 
 窗口内部调用 `Complete(true)` 或 `Complete(false)` 返回结果并关闭。
+
+### 按窗口 ID 关闭
+
+`Close(windowId)` 同步发起关闭，`CloseAsync(windowId)` 等待退场动画和清理完成。
+同一 ID 同时存在多个实例时，两者都以最后打开且仍处于活动生命周期的实例为目标：
+
+```csharp
+_uiManager.Close(UIWindowId.ConfirmWindow);
+await _uiManager.CloseAsync(UIWindowId.ConfirmWindow);
+```
 
 ### 无公共底框窗口
 
@@ -252,7 +262,7 @@ Style 决定公共 Frame、遮罩颜色和动画；窗口条目决定是否显�
 
 ```csharp
 bool received = await _uiManager
-    .OpenAsync<RewardWindow, RewardParam, bool>(
+    .OpenForResultAsync<RewardParam, bool>(
         UIWindowId.RewardWindow,
         new RewardParam { Gold = 100 });
 ```

@@ -59,7 +59,7 @@ public sealed class ExamplePresenter
 
     public async UniTask<bool> ShowConfirmAsync()
     {
-        return await ui.OpenAsync<ConfirmWindow, ConfirmParam, bool>(
+        return await ui.OpenForResultAsync<ConfirmParam, bool>(
             UIWindowId.ConfirmWindow,
             new ConfirmParam
             {
@@ -75,7 +75,15 @@ public sealed class ExamplePresenter
 打开无参数、无返回值窗口：
 
 ```csharp
-await ui.OpenAsync<SettingsWindow>(UIWindowId.SettingWindow);
+var handle = ui.Open(UIWindowId.SettingWindow);
+await handle.Opened; // 仅在确实需要等待开场动画时使用
+```
+
+按窗口 ID 关闭最后打开的同 ID 实例：
+
+```csharp
+ui.Close(UIWindowId.SettingWindow);             // 同步发起关闭
+await ui.CloseAsync(UIWindowId.SettingWindow);  // 等待退场和清理完成
 ```
 
 显示 Toast：
@@ -97,7 +105,7 @@ RectTransform debugLayer = ui.GetLayerRoot(UILayer.Debug);
 var customView = Object.Instantiate(customViewPrefab, debugLayer, false);
 ```
 
-通过 Layer 根节点手动添加的对象不归 `UIManager.CloseAllAsync` 管理，外部代码需要自行负责销毁和事件解绑；不要修改 Layer 根节点本身的父节点或 sibling 顺序。
+通过 Layer 根节点手动添加的对象不归 `UIManager.CloseAll/CloseAllAsync` 管理，外部代码需要自行负责销毁和事件解绑；不要修改 Layer 根节点本身的父节点或 sibling 顺序。
 
 ## 添加新窗口
 
@@ -106,7 +114,7 @@ var customView = Object.Instantiate(customViewPrefab, debugLayer, false);
 3. 创建内容 Prefab，并放入 `Assets/Resources/UISystem/Windows/`。
 4. 按需创建或复用 `UIWindowStyle`。
 5. 在 `Assets/UISystem/Config/UIWindowConfig.asset` 中注册窗口 ID、Prefab、样式、默认层级和遮挡策略。
-6. 通过 `IUIManager.OpenAsync` 打开窗口。
+6. 通过 `IUIManager.Open` 打开窗口；需要等待返回值时使用 `OpenForResultAsync`。
 
 窗口内容应在 `OnInit` 中初始化，在 `OnOpened` 中启动仅应在完整显示后执行的逻辑，在 `OnClosing` 中解绑业务监听。
 
@@ -129,6 +137,8 @@ Assets/
 ## 设计说明
 
 `UISystemScope` 是全局组合根，负责构建 VContainer、持久化 UI 根节点、注入场景对象并维持唯一 EventSystem。`UIManager` 根据 `UIWindowConfig` 加载 Frame 和内容 Prefab，并负责窗口栈、动画、交互状态与资源清理。
+
+`Open()` 和 `CloseAll()` 都同步发起操作。每次 `CloseAll()` 只关闭调用当刻已有的窗口，之后新开的窗口不会被旧批次关闭；`CloseAllAsync()` 语义相同，但会等待该批窗口完成退场和清理。需要严格视觉串行时先 `await CloseAllAsync()`，再调用 `Open()`。
 
 `UIWindowStyle` 只负责 Frame、遮罩颜色和动画等外观；每个 `UIWindowConfig` 条目独立配置 `showMask`、`blockInput`、`closeOnOutsideClick` 和 `closeOnEsc`。因此单个窗口可以在不显示遮罩时阻止点击穿透，不需要与 Style 进行布尔值合并。普通 Dialog 默认使用 `KeepVisible`；确认存在完整不透明区域的大 Dialog 可使用 `HideFullyCovered`；`HideAllBelow` 仅允许用于 FullScreen，并且必须同时开启 `allowFullOcclusion` 明确确认窗口完全不透明。裁剪通过 `CanvasRenderer.cull` 完成，不会触发下层对象的 `OnDisable/OnEnable`。Frame 被裁剪时它自己的 Mask 会同时裁剪；多层窗口采用单一 Mask 所有者，新旧 Mask 交接会继承完整 RGBA 并插值到目标颜色，避免遮罩叠加、跳色和闪烁。系统仅在开场动画结束后裁剪 Frame，并在退场动画开始前恢复；每次栈变化都会从栈顶重新计算，异常关闭或非栈顶关闭也不会遗留错误状态。
 

@@ -22,27 +22,46 @@ namespace Game.UISystem
 
     /// <summary>
     /// UI 系统对业务层暴露的入口。
-    /// OpenAsync 返回时表示窗口已经完成退场动画并清理，而不只是收到关闭请求。
+    /// Open/Close 方法同步发起操作；带 Async 后缀的方法只用于等待动画、清理或窗口结果。
     /// </summary>
     public interface IUIManager
     {
-        /// <summary>打开无参数、无返回值窗口，并异步等待窗口完全关闭。</summary>
-        UniTask OpenAsync<TWindow>(
+        /// <summary>同步创建无参数、无返回值窗口，并立即返回它的生命周期句柄。</summary>
+        UIWindowHandle<R3.Unit> Open(
             UIWindowId windowId,
-            UILayer? layerOverride = null)
-            where TWindow : UIWindow<R3.Unit, R3.Unit>;
+            UILayer? layerOverride = null);
 
-        /// <summary>打开带参数和返回值的窗口，并取得窗口关闭时提交的结果。</summary>
-        UniTask<TResult> OpenAsync<TWindow, TParam, TResult>(
+        /// <summary>同步创建带参数和返回值的窗口，并立即返回它的生命周期句柄。</summary>
+        UIWindowHandle<TResult> Open<TParam, TResult>(
             UIWindowId windowId,
             TParam param,
-            UILayer? layerOverride = null)
-            where TWindow : UIWindow<TParam, TResult>;
+            UILayer? layerOverride = null);
 
-        /// <summary>关闭主窗口栈顶部窗口；Toast 不属于主窗口栈，不受此方法影响。</summary>
+        /// <summary>打开窗口，并异步等待窗口完成退场动画和清理后返回结果。</summary>
+        UniTask<TResult> OpenForResultAsync<TParam, TResult>(
+            UIWindowId windowId,
+            TParam param,
+            UILayer? layerOverride = null);
+
+        /// <summary>同步关闭最后打开的指定 ID 窗口；没有活动实例时不执行操作。</summary>
+        void Close(UIWindowId windowId);
+
+        /// <summary>关闭最后打开的指定 ID 窗口，并等待其完成退场动画和清理。</summary>
+        UniTask CloseAsync(UIWindowId windowId);
+
+        /// <summary>同步请求关闭主窗口栈顶部窗口；Toast 不属于主窗口栈。</summary>
+        void CloseTop();
+
+        /// <summary>关闭主窗口栈顶部窗口，并等待其完成退场动画和清理。</summary>
         UniTask CloseTopAsync();
 
-        /// <summary>关闭所有活动 UI，包括主窗口、Loading 和不入栈的 Toast。</summary>
+        /// <summary>
+        /// 同步请求关闭调用时已有的全部活动 UI，包括主窗口、Loading 和 Toast。
+        /// 调用后新开的窗口不属于本次关闭批次。
+        /// </summary>
+        void CloseAll();
+
+        /// <summary>关闭调用时已有的全部活动 UI，并等待该批窗口完成清理。</summary>
         UniTask CloseAllAsync();
 
         /// <summary>不播放退场动画，立即清理所有活动 UI；用于活动场景切换。</summary>
@@ -67,6 +86,44 @@ namespace Game.UISystem
         int OpenCount { get; }
     }
 
+    /// <summary>已创建窗口的生命周期句柄。</summary>
+    public sealed class UIWindowHandle<TResult>
+    {
+        private readonly Action _close;
+        private readonly UniTaskCompletionSource<R3.Unit> _openedSource;
+        private readonly UniTaskCompletionSource<TResult> _closedSource;
+
+        internal UIWindowHandle(
+            Action close,
+            UniTaskCompletionSource<R3.Unit> openedSource,
+            UniTaskCompletionSource<TResult> closedSource)
+        {
+            _close = close;
+            _openedSource = openedSource;
+            _closedSource = closedSource;
+        }
+
+        /// <summary>开场动画和 OnOpened 完成后结束；开场期间关闭则取消。</summary>
+        public UniTask Opened => _openedSource.Task;
+
+        /// <summary>窗口提交结果、完成退场动画并清理后结束。</summary>
+        public UniTask<TResult> Closed => _closedSource.Task;
+
+        /// <summary>同步请求关闭该窗口；重复调用不会重复执行关闭流程。</summary>
+        public void Close() => _close?.Invoke();
+
+        internal void TrySetOpened() => _openedSource.TrySetResult(R3.Unit.Default);
+        internal void TrySetOpenedException(Exception exception) =>
+            _openedSource.TrySetException(exception);
+        internal void TrySetOpenedCanceled(CancellationToken token) =>
+            _openedSource.TrySetCanceled(token);
+        internal void TrySetClosed(TResult result) => _closedSource.TrySetResult(result);
+        internal void TrySetClosedException(Exception exception) =>
+            _closedSource.TrySetException(exception);
+        internal void TrySetClosedCanceled(CancellationToken token) =>
+            _closedSource.TrySetCanceled(token);
+    }
+
     /// <summary>
     /// 一个已创建 UI 实例的运行时上下文。
     /// 名称沿用 StackEntry，但 Toast 也会使用该结构，只是不会加入主窗口栈。
@@ -78,6 +135,8 @@ namespace Game.UISystem
         private bool _isCleaned;
 
         public readonly UIWindowBase Window;
+        public readonly UIWindowId WindowId;
+        public readonly long OpenSequence;
         public readonly UIWindowFrame Frame;
         public readonly GameObject FrameGo;
         public readonly GameObject MaskGo;
@@ -96,6 +155,8 @@ namespace Game.UISystem
 
         public StackEntry(
             UIWindowBase window,
+            UIWindowId windowId,
+            long openSequence,
             UIWindowFrame frame,
             GameObject frameGo,
             GameObject maskGo,
@@ -107,6 +168,8 @@ namespace Game.UISystem
             bool participatesInWindowStack)
         {
             Window = window;
+            WindowId = windowId;
+            OpenSequence = openSequence;
             Frame = frame;
             FrameGo = frameGo;
             MaskGo = maskGo;
@@ -201,16 +264,17 @@ namespace Game.UISystem
         private readonly IObjectResolver _container;
         private readonly UILayerConfig _layerConfig;
         private readonly UIWindowConfig _windowConfig;
-        // 主窗口栈负责返回键、CloseTopAsync 和窗口之间的交互互斥。
+        // 主窗口栈负责返回键、CloseTop/CloseTopAsync 和窗口之间的交互互斥。
         // 为保持结构简单，除 Toast Layer 外的窗口仍共用这一条栈。
         private readonly Stack<StackEntry> _stack = new Stack<StackEntry>();
 
         // 活动集合包含所有实例，包括不进入主栈的 Toast。
-        // 切场景调用 CloseAllAsync 时必须以它为准，不能只遍历 _stack。
+        // CloseAll/CloseAllAsync 必须以它为准，不能只遍历 _stack。
         private readonly HashSet<StackEntry> _activeEntries = new HashSet<StackEntry>();
         private StackEntry _maskOwner;
+        private long _nextOpenSequence;
         private bool _isClosingAll;
-        private UniTaskCompletionSource<R3.Unit> _closeAllCompletion;
+        private int _closeAllOperationCount;
 
         public int OpenCount => _stack.Count;
         public Canvas UICanvas => _layerConfig.UICanvas;
@@ -283,20 +347,15 @@ namespace Game.UISystem
             _windowConfig = windowConfig ?? throw new ArgumentNullException(nameof(windowConfig));
         }
 
-        public async UniTask OpenAsync<TWindow>(
+        public UIWindowHandle<R3.Unit> Open(
             UIWindowId windowId,
-            UILayer? layerOverride = null)
-            where TWindow : UIWindow<R3.Unit, R3.Unit>
-        {
-            await OpenAsync<TWindow, R3.Unit, R3.Unit>(
-                windowId, R3.Unit.Default, layerOverride);
-        }
+            UILayer? layerOverride = null) =>
+            Open<R3.Unit, R3.Unit>(windowId, R3.Unit.Default, layerOverride);
 
-        public async UniTask<TResult> OpenAsync<TWindow, TParam, TResult>(
+        public UIWindowHandle<TResult> Open<TParam, TResult>(
             UIWindowId windowId,
             TParam param,
             UILayer? layerOverride = null)
-            where TWindow : UIWindow<TParam, TResult>
         {
             // 先完成全部配置校验，再创建 GameObject，避免配置错误留下半初始化节点。
             var config = GetValidatedConfig(windowId, layerOverride);
@@ -309,7 +368,7 @@ namespace Game.UISystem
                     $"[UIManager] Window '{windowId}' 对应的 Layer 根节点未配置");
 
             // Toast 只复用加载、动画和清理流程，不加入主窗口栈，因此不会禁用当前弹窗，
-            // 也不会被 CloseTopAsync 当作业务窗口关闭。
+            // 也不会被 CloseTop/CloseTopAsync 当作业务窗口关闭。
             bool participatesInWindowStack = layer != UILayer.Toast;
 
             GameObject frameGo = null;
@@ -317,6 +376,7 @@ namespace Game.UISystem
             GameObject inputBlockerGo = null;
             StackEntry stackEntry = null;
             CancellationTokenSource openAnimationCancellation = null;
+            UIWindowHandle<TResult> handle = null;
 
             try
             {
@@ -340,12 +400,15 @@ namespace Game.UISystem
                     throw new InvalidOperationException(
                         $"[UIManager] Content '{config.contentPrefabAddress}' 根节点缺少 RectTransform");
 
-                var window = contentGo.GetComponent<TWindow>();
+                var window = contentGo.GetComponent<UIWindow<TParam, TResult>>();
                 if (window == null)
                     throw new InvalidOperationException(
-                        $"[UIManager] Content '{config.contentPrefabAddress}' 缺少 {typeof(TWindow).Name}");
+                        $"[UIManager] Content '{config.contentPrefabAddress}' 缺少 " +
+                        $"UIWindow<{typeof(TParam).Name}, {typeof(TResult).Name}>");
 
                 var resultSource = new UniTaskCompletionSource<TResult>();
+                var openedSource = new UniTaskCompletionSource<R3.Unit>();
+                var closedSource = new UniTaskCompletionSource<TResult>();
                 // 遮罩只负责视觉表现，不参与射线；是否显示由单窗口条目决定。
                 if (config.showMask)
                 {
@@ -373,6 +436,8 @@ namespace Game.UISystem
                 var frameRect = frameGo.GetComponent<RectTransform>();
                 stackEntry = new StackEntry(
                     window,
+                    windowId,
+                    ++_nextOpenSequence,
                     frame,
                     frameGo,
                     maskGo,
@@ -384,6 +449,8 @@ namespace Game.UISystem
                     participatesInWindowStack);
                 openAnimationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
                     window.GetCancellationTokenOnDestroy());
+                handle = new UIWindowHandle<TResult>(
+                    () => window.TryRequestClose(), openedSource, closedSource);
 
                 // Setup 会先保存关闭结果源和生命周期回调，再调用业务窗口 OnInit。
                 // 关闭请求会取消仍在播放的开场动画，使流程尽快进入统一退场阶段。
@@ -397,43 +464,21 @@ namespace Game.UISystem
 
                 frame.PrepareContent(contentRect);
 
-                // 必须在第一次 await 前登记活动实例，保证同帧发生场景切换时 CloseAllAsync 能看到它。
+                // 同步返回前登记活动实例，保证紧接着调用 CloseAll 时能够捕获它。
                 _activeEntries.Add(stackEntry);
 
                 if (stackEntry.ParticipatesInWindowStack)
                     Push(stackEntry);
 
-                try
-                {
-                    await UniTask.WhenAll(
-                        UIAnimator.PlayOpenAsync(
-                            frameRect, canvasGroup, style, openAnimationCancellation.Token),
-                        maskGo != null
-                            ? UIAnimator.AnimateMaskColorAsync(
-                                maskGo, style.maskColor, style.openDuration,
-                                openAnimationCancellation.Token)
-                            : UniTask.CompletedTask);
-                }
-                catch (OperationCanceledException) when (window.IsCloseRequested)
-                {
-                    // 用户可能在开场动画未结束时关闭窗口。这属于正常控制流：
-                    // 忽略本次取消异常，随后等待 resultSource 并进入统一退场和清理流程。
-                }
-                stackEntry.OpenAnimationComplete = true;
-                RecalculateOcclusion();
-                stackEntry.ApplyInteraction(
-                    !stackEntry.ParticipatesInWindowStack || IsTop(stackEntry));
-
-                if (!window.IsCloseRequested && !window.IsClosing)
-                    window.NotifyOpened();
-
-                // resultSource 由 Close/Complete/ESC/遮罩等关闭入口完成；
-                // 外部销毁窗口时使用 Destroy token 终止等待，外层 catch 会负责兜底清理。
-                TResult result = await resultSource.Task.AttachExternalCancellation(
-                    window.GetCancellationTokenOnDestroy());
-                await CloseEntryAsync(stackEntry);
-                openAnimationCancellation.Dispose();
-                return result;
+                // 创建、Setup 和入栈均在本方法返回前完成；动画和等待结果在后台生命周期中执行。
+                RunEntryLifecycleAsync(
+                        stackEntry,
+                        frameRect,
+                        resultSource,
+                        handle,
+                        openAnimationCancellation)
+                    .Forget();
+                return handle;
             }
             catch
             {
@@ -451,6 +496,103 @@ namespace Game.UISystem
             }
         }
 
+        public UniTask<TResult> OpenForResultAsync<TParam, TResult>(
+            UIWindowId windowId,
+            TParam param,
+            UILayer? layerOverride = null) =>
+            Open<TParam, TResult>(windowId, param, layerOverride).Closed;
+
+        public void Close(UIWindowId windowId)
+        {
+            ValidateWindowId(windowId);
+            FindLatestActiveEntry(windowId)?.Window.TryRequestClose();
+        }
+
+        public async UniTask CloseAsync(UIWindowId windowId)
+        {
+            ValidateWindowId(windowId);
+            var entry = FindLatestActiveEntry(windowId);
+            if (entry == null) return;
+
+            entry.Window.TryRequestClose();
+            await entry.Closed.Task;
+        }
+
+        private async UniTaskVoid RunEntryLifecycleAsync<TResult>(
+            StackEntry entry,
+            RectTransform frameRect,
+            UniTaskCompletionSource<TResult> resultSource,
+            UIWindowHandle<TResult> handle,
+            CancellationTokenSource openAnimationCancellation)
+        {
+            try
+            {
+                try
+                {
+                    await UniTask.WhenAll(
+                        UIAnimator.PlayOpenAsync(
+                            frameRect,
+                            entry.CanvasGroup,
+                            entry.Style,
+                            openAnimationCancellation.Token),
+                        entry.MaskGo != null
+                            ? UIAnimator.AnimateMaskColorAsync(
+                                entry.MaskGo,
+                                entry.Style.maskColor,
+                                entry.Style.openDuration,
+                                openAnimationCancellation.Token)
+                            : UniTask.CompletedTask);
+                }
+                catch (OperationCanceledException) when (entry.Window.IsCloseRequested)
+                {
+                    // 开场期间关闭属于正常流程，随后直接进入统一退场和清理。
+                }
+
+                entry.OpenAnimationComplete = true;
+                RecalculateOcclusion();
+                entry.ApplyInteraction(
+                    !entry.ParticipatesInWindowStack || IsTop(entry));
+
+                if (!entry.Window.IsCloseRequested && !entry.Window.IsClosing)
+                {
+                    entry.Window.NotifyOpened();
+                    handle.TrySetOpened();
+                }
+                else
+                {
+                    handle.TrySetOpenedCanceled(openAnimationCancellation.Token);
+                }
+
+                TResult result = await resultSource.Task.AttachExternalCancellation(
+                    entry.Window.GetCancellationTokenOnDestroy());
+                await CloseEntryAsync(entry);
+                handle.TrySetClosed(result);
+            }
+            catch (OperationCanceledException exception)
+            {
+                CleanupEntry(entry);
+                handle.TrySetOpenedCanceled(exception.CancellationToken);
+                handle.TrySetClosedCanceled(exception.CancellationToken);
+            }
+            catch (Exception exception)
+            {
+                CleanupEntry(entry);
+                handle.TrySetOpenedException(exception);
+                handle.TrySetClosedException(exception);
+                Debug.LogException(exception);
+            }
+            finally
+            {
+                openAnimationCancellation.Dispose();
+            }
+        }
+
+        public void CloseTop()
+        {
+            if (_stack.Count > 0)
+                _stack.Peek().Window.TryRequestClose();
+        }
+
         public async UniTask CloseTopAsync()
         {
             if (_stack.Count == 0) return;
@@ -460,43 +602,52 @@ namespace Game.UISystem
             await top.Closed.Task;
         }
 
-        public async UniTask CloseAllAsync()
+        public void CloseAll()
         {
-            if (_activeEntries.Count == 0) return;
-            if (_isClosingAll)
+            BeginCloseAllBatch().Forget(Debug.LogException);
+        }
+
+        public UniTask CloseAllAsync() => BeginCloseAllBatch();
+
+        private UniTask BeginCloseAllBatch()
+        {
+            if (_activeEntries.Count == 0)
+                return UniTask.CompletedTask;
+
+            var entries = new List<StackEntry>(_activeEntries);
+            var closeTasks = new UniTask[entries.Count];
+
+            if (_closeAllOperationCount++ == 0)
             {
-                if (_closeAllCompletion != null)
-                    await _closeAllCompletion.Task;
-                return;
+                _isClosingAll = true;
+                // 多个窗口并发退场时冻结当前 Mask owner，避免 HashSet 顺序造成闪烁。
+                _maskOwner = ResolveMaskOwner();
             }
 
-            _isClosingAll = true;
-            _closeAllCompletion = new UniTaskCompletionSource<R3.Unit>();
-            // 批量关闭期间冻结当前唯一 Mask owner。HashSet 的枚举顺序不确定，不能让
-            // 每个并发退场窗口依次抢占遮罩，否则会产生随机闪烁。
-            _maskOwner = ResolveMaskOwner();
+            for (int i = 0; i < entries.Count; i++)
+            {
+                entries[i].Window.TryRequestClose();
+                closeTasks[i] = entries[i].Closed.Task;
+            }
+
+            return WaitForCloseAllBatchAsync(closeTasks);
+        }
+
+        private async UniTask WaitForCloseAllBatchAsync(UniTask[] closeTasks)
+        {
             try
             {
-                // 使用快照是必要的：每个窗口退场完成后都会从 _activeEntries 删除自身，
-                // 直接遍历原集合会在 await 期间产生“集合已修改”异常。
-                var entries = new List<StackEntry>(_activeEntries);
-                var closeTasks = new UniTask[entries.Count];
-                for (int i = 0; i < entries.Count; i++)
-                {
-                    entries[i].Window.TryRequestClose();
-                    closeTasks[i] = entries[i].Closed.Task;
-                }
-
-                // 并发退场，避免窗口较多时逐个等待导致切场景耗时累加。
-                // 返回时快照中的实例均已完成 CleanupEntry。
                 await UniTask.WhenAll(closeTasks);
             }
             finally
             {
-                _maskOwner = null;
-                _isClosingAll = false;
-                _closeAllCompletion.TrySetResult(R3.Unit.Default);
-                _closeAllCompletion = null;
+                _closeAllOperationCount--;
+                if (_closeAllOperationCount == 0)
+                {
+                    _isClosingAll = false;
+                    _maskOwner = ResolveMaskOwner();
+                    RecalculateOcclusion();
+                }
             }
         }
 
@@ -511,10 +662,10 @@ namespace Game.UISystem
             var entries = new List<StackEntry>(_activeEntries);
             foreach (var entry in entries)
             {
-                // 先完成窗口结果，使正在 await OpenAsync 的调用方能够正常结束。
+                // 先完成窗口结果，使正在等待 handle.Closed 的调用方能够正常结束。
                 entry.Window.TryRequestClose();
 
-                // TryRequestClose 可能同步唤醒 OpenAsync，并由 CloseEntryAsync 抢先取得关闭权。
+                // TryRequestClose 可能唤醒后台生命周期，并由 CloseEntryAsync 抢先取得关闭权。
                 // 只有本方法取得关闭权时才主动派发 OnClosing，保证生命周期回调至多执行一次。
                 if (entry.TryBeginClosing())
                 {
@@ -544,8 +695,8 @@ namespace Game.UISystem
                 throw new ArgumentOutOfRangeException(nameof(time), time, "未知的 Toast 时长枚举");
 
             // ShowToast 是不等待返回值的便捷接口。具体实例仍进入 _activeEntries，
-            // 因而切场景时 CloseAllAsync 可以关闭尚未到期的 Toast。
-            OpenAsync<CommonToast, CommonToastParam, R3.Unit>(
+            // 因而切场景时 CloseAll/CloseAllAsync 可以关闭尚未到期的 Toast。
+            Open<CommonToastParam, R3.Unit>(
                 UIWindowId.CommonToast,
                 new CommonToastParam
                 {
@@ -553,13 +704,12 @@ namespace Game.UISystem
                     IconPath = icon,
                     Duration = time
                 },
-                UILayer.Toast).Forget(Debug.LogException);
+                UILayer.Toast);
         }
 
         private UIWindowEntry GetValidatedConfig(UIWindowId windowId, UILayer? layerOverride)
         {
-            if (!Enum.IsDefined(typeof(UIWindowId), windowId))
-                throw new ArgumentOutOfRangeException(nameof(windowId), windowId, "未知的窗口 ID");
+            ValidateWindowId(windowId);
 
             var config = _windowConfig.Get(windowId);
             if (config == null)
@@ -604,6 +754,25 @@ namespace Game.UISystem
             return config;
         }
 
+        private StackEntry FindLatestActiveEntry(UIWindowId windowId)
+        {
+            StackEntry latest = null;
+            foreach (var entry in _activeEntries)
+            {
+                if (entry.WindowId != windowId)
+                    continue;
+                if (latest == null || entry.OpenSequence > latest.OpenSequence)
+                    latest = entry;
+            }
+            return latest;
+        }
+
+        private static void ValidateWindowId(UIWindowId windowId)
+        {
+            if (!Enum.IsDefined(typeof(UIWindowId), windowId))
+                throw new ArgumentOutOfRangeException(nameof(windowId), windowId, "未知的窗口 ID");
+        }
+
         private void ValidateLayerOpenOrder(UIWindowId windowId, UILayer layer)
         {
             // Toast 独立于主窗口栈。主栈只允许同层或向更高层打开，防止视觉上位于
@@ -611,7 +780,19 @@ namespace Game.UISystem
             if (layer == UILayer.Toast || _stack.Count == 0)
                 return;
 
-            UILayer currentLayer = _stack.Peek().Layer;
+            StackEntry currentTop = null;
+            foreach (var entry in _stack)
+            {
+                if (!entry.Window.IsCloseRequested && !entry.Window.IsClosing)
+                {
+                    currentTop = entry;
+                    break;
+                }
+            }
+            if (currentTop == null)
+                return;
+
+            UILayer currentLayer = currentTop.Layer;
             if ((int)layer < (int)currentLayer)
                 throw new InvalidOperationException(
                     $"[UIManager] Window '{windowId}' 不能在活动的 {currentLayer} 窗口上方打开更低的 {layer} Layer");
@@ -638,7 +819,8 @@ namespace Game.UISystem
                 _stack.Peek().ApplyInteraction(false);
             _stack.Push(entry);
             entry.IsInStack = true;
-            if (entry.MaskGo != null)
+            // CloseAll 批次期间冻结旧 Mask owner；批次之后再从幸存窗口统一推导。
+            if (!_isClosingAll && entry.MaskGo != null)
                 _maskOwner = entry;
             entry.ApplyInteraction(true);
             RecalculateOcclusion();
@@ -662,10 +844,15 @@ namespace Game.UISystem
                 // try/finally 内；无论哪一步失败，finally 都会完成移栈、销毁和 Closed 信号。
                 entry.Window.MarkClosing();
                 entry.Window.NotifyClosing();
+                bool wasTop = IsTop(entry);
                 entry.ApplyInteraction(false);
-                StackEntry transitionBlocker = entry.InputBlockerGo != null
-                    ? entry
-                    : FindNextInputBlocker(entry);
+                StackEntry transitionBlocker = null;
+                if (wasTop)
+                {
+                    transitionBlocker = entry.InputBlockerGo != null
+                        ? entry
+                        : FindNextInputBlocker(entry);
+                }
                 transitionBlocker?.ApplyInputTransitionBlocker();
                 // 先完成 Mask 所有权交接，再恢复下层渲染。交接会复制完整 RGBA，
                 // 因此同一帧始终只有一个连续颜色的可见遮罩。
@@ -703,7 +890,9 @@ namespace Game.UISystem
             _activeEntries.Remove(entry);
 
             if (ReferenceEquals(_maskOwner, entry))
-                _maskOwner = _isClosingAll ? null : FindNextMaskOwner(entry);
+                // CloseAll 期间新开的窗口不属于旧批次；旧 owner 清理后允许幸存窗口
+                // 接管 Mask，避免其在旧批次完全结束前短暂失去应有的视觉遮罩。
+                _maskOwner = FindNextMaskOwner(entry);
 
             bool wasTop = entry.IsInStack && IsTop(entry);
             if (entry.IsInStack)
