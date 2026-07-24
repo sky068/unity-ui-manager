@@ -43,11 +43,17 @@ namespace Game.UISystem
             TParam param,
             UILayer? layerOverride = null);
 
-        /// <summary>同步关闭最后打开的指定 ID 窗口；没有活动实例时不执行操作。</summary>
-        void Close(UIWindowId windowId);
+        /// <summary>
+        /// 同步关闭指定 ID 窗口。默认只关闭最后打开的一个实例；
+        /// closeAll 为 true 时关闭调用时已存在的全部同 ID 实例。
+        /// </summary>
+        void Close(UIWindowId windowId, bool closeAll = false);
 
-        /// <summary>关闭最后打开的指定 ID 窗口，并等待其完成退场动画和清理。</summary>
-        UniTask CloseAsync(UIWindowId windowId);
+        /// <summary>
+        /// 关闭指定 ID 窗口并等待清理。默认只关闭最后打开的一个实例；
+        /// closeAll 为 true 时关闭并等待调用时已存在的全部同 ID 实例。
+        /// </summary>
+        UniTask CloseAsync(UIWindowId windowId, bool closeAll = false);
 
         /// <summary>同步请求关闭主窗口栈顶部窗口；Toast 不属于主窗口栈。</summary>
         void CloseTop();
@@ -145,6 +151,7 @@ namespace Game.UISystem
         public readonly UIWindowStyle Style;
         public readonly UILayer Layer;
         public readonly UIOcclusionMode OcclusionMode;
+        public object Handle { get; set; }
         public readonly UniTaskCompletionSource<R3.Unit> Closed =
             new UniTaskCompletionSource<R3.Unit>();
         public readonly bool ParticipatesInWindowStack;
@@ -367,6 +374,26 @@ namespace Game.UISystem
                 throw new InvalidOperationException(
                     $"[UIManager] Window '{windowId}' 对应的 Layer 根节点未配置");
 
+            if (config.openMode == UIWindowOpenMode.Single)
+            {
+                var existing = FindLatestReusableEntry(windowId);
+                if (existing != null)
+                {
+                    if (existing.Layer != layer)
+                        throw new InvalidOperationException(
+                            $"[UIManager] Single Window '{windowId}' 已在 {existing.Layer} Layer 中打开，不能以 {layer} Layer 重新打开");
+                    if (!(existing.Window is UIWindow<TParam, TResult> existingWindow) ||
+                        !(existing.Handle is UIWindowHandle<TResult> existingHandle))
+                        throw new InvalidOperationException(
+                            $"[UIManager] Single Window '{windowId}' 的参数或返回值类型与已有实例不一致");
+
+                    existingWindow.NotifyReopened(param);
+                    if (!existing.Window.IsCloseRequested && !existing.Window.IsClosing)
+                        BringToTop(existing);
+                    return existingHandle;
+                }
+            }
+
             // Toast 只复用加载、动画和清理流程，不加入主窗口栈，因此不会禁用当前弹窗，
             // 也不会被 CloseTop/CloseTopAsync 当作业务窗口关闭。
             bool participatesInWindowStack = layer != UILayer.Toast;
@@ -451,6 +478,7 @@ namespace Game.UISystem
                     window.GetCancellationTokenOnDestroy());
                 handle = new UIWindowHandle<TResult>(
                     () => window.TryRequestClose(), openedSource, closedSource);
+                stackEntry.Handle = handle;
 
                 // Setup 会先保存关闭结果源和生命周期回调，再调用业务窗口 OnInit。
                 // 关闭请求会取消仍在播放的开场动画，使流程尽快进入统一退场阶段。
@@ -502,20 +530,43 @@ namespace Game.UISystem
             UILayer? layerOverride = null) =>
             Open<TParam, TResult>(windowId, param, layerOverride).Closed;
 
-        public void Close(UIWindowId windowId)
+        public void Close(UIWindowId windowId, bool closeAll = false)
         {
             ValidateWindowId(windowId);
-            FindLatestActiveEntry(windowId)?.Window.TryRequestClose();
+            if (!closeAll)
+            {
+                FindLatestActiveEntry(windowId)?.Window.TryRequestClose();
+                return;
+            }
+
+            var entries = FindActiveEntries(windowId);
+            for (int i = 0; i < entries.Count; i++)
+                entries[i].Window.TryRequestClose();
         }
 
-        public async UniTask CloseAsync(UIWindowId windowId)
+        public async UniTask CloseAsync(UIWindowId windowId, bool closeAll = false)
         {
             ValidateWindowId(windowId);
-            var entry = FindLatestActiveEntry(windowId);
-            if (entry == null) return;
+            if (!closeAll)
+            {
+                var entry = FindLatestActiveEntry(windowId);
+                if (entry == null) return;
 
-            entry.Window.TryRequestClose();
-            await entry.Closed.Task;
+                entry.Window.TryRequestClose();
+                await entry.Closed.Task;
+                return;
+            }
+
+            var entries = FindActiveEntries(windowId);
+            if (entries.Count == 0) return;
+
+            var closeTasks = new UniTask[entries.Count];
+            for (int i = 0; i < entries.Count; i++)
+            {
+                entries[i].Window.TryRequestClose();
+                closeTasks[i] = entries[i].Closed.Task;
+            }
+            await UniTask.WhenAll(closeTasks);
         }
 
         private async UniTaskVoid RunEntryLifecycleAsync<TResult>(
@@ -728,6 +779,8 @@ namespace Game.UISystem
                 throw new InvalidOperationException($"[UIManager] Window '{windowId}' 的动画类型非法");
             if (!Enum.IsDefined(typeof(UIOcclusionMode), config.occlusionMode))
                 throw new InvalidOperationException($"[UIManager] Window '{windowId}' 的遮挡策略非法");
+            if (!Enum.IsDefined(typeof(UIWindowOpenMode), config.openMode))
+                throw new InvalidOperationException($"[UIManager] Window '{windowId}' 的实例策略非法");
             if (config.style.openDuration < 0f || config.style.closeDuration < 0f ||
                 float.IsNaN(config.style.openDuration) || float.IsNaN(config.style.closeDuration) ||
                 float.IsInfinity(config.style.openDuration) || float.IsInfinity(config.style.closeDuration))
@@ -765,6 +818,31 @@ namespace Game.UISystem
                     latest = entry;
             }
             return latest;
+        }
+
+        private StackEntry FindLatestReusableEntry(UIWindowId windowId)
+        {
+            StackEntry latest = null;
+            foreach (var entry in _activeEntries)
+            {
+                if (entry.WindowId != windowId ||
+                    entry.Window.IsCloseRequested || entry.Window.IsClosing)
+                    continue;
+                if (latest == null || entry.OpenSequence > latest.OpenSequence)
+                    latest = entry;
+            }
+            return latest;
+        }
+
+        private List<StackEntry> FindActiveEntries(UIWindowId windowId)
+        {
+            var entries = new List<StackEntry>();
+            foreach (var entry in _activeEntries)
+            {
+                if (entry.WindowId == windowId)
+                    entries.Add(entry);
+            }
+            return entries;
         }
 
         private static void ValidateWindowId(UIWindowId windowId)
@@ -823,6 +901,28 @@ namespace Game.UISystem
             if (!_isClosingAll && entry.MaskGo != null)
                 _maskOwner = entry;
             entry.ApplyInteraction(true);
+            RecalculateOcclusion();
+        }
+
+        private void BringToTop(StackEntry entry)
+        {
+            if (entry == null) return;
+
+            if (entry.ParticipatesInWindowStack && entry.IsInStack && !IsTop(entry))
+            {
+                RemoveEntry(entry);
+                Push(entry);
+            }
+
+            // Transform 层级与逻辑栈同步：Mask 在最下，输入屏蔽层居中，Frame 在最上。
+            entry.MaskGo?.transform.SetAsLastSibling();
+            entry.InputBlockerGo?.transform.SetAsLastSibling();
+            entry.FrameGo?.transform.SetAsLastSibling();
+
+            if (!entry.ParticipatesInWindowStack)
+                entry.ApplyInteraction(true);
+            if (!_isClosingAll && entry.MaskGo != null)
+                _maskOwner = entry;
             RecalculateOcclusion();
         }
 

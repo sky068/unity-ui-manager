@@ -145,6 +145,22 @@ _uiManager.Close(UIWindowId.ConfirmWindow);
 await _uiManager.CloseAsync(UIWindowId.ConfirmWindow);
 ```
 
+传入 `true` 可关闭调用时已存在的全部同 ID 实例：
+
+```csharp
+_uiManager.Close(UIWindowId.ConfirmWindow, true);
+await _uiManager.CloseAsync(UIWindowId.ConfirmWindow, true);
+```
+
+### 窗口实例策略
+
+`UIWindowEntry.openMode` 默认为 `Multiple`：
+
+- `Multiple`：每次打开都创建独立实例。
+- `Single`：复用同 ID 的有效实例，将它移到栈顶并调用 `OnReopen(param)`。
+
+Single 实例已进入关闭流程时不再复用，新的 `Open` 会创建新实例。
+
 ### 无公共底框窗口
 
 `TipsWindow`、`NoneToastTest` 和 `NoneLoadingTest` 使用 `StyleNone`。它们仍由 UIManager 管理生命周期和窗口栈，但视觉背景、按钮和尺寸全部由内容 Prefab 自己提供。这些窗口在 `UIWindowConfig` 中配置为不显示遮罩但屏蔽全屏输入，避免触摸穿透到下层界面；Common Toast 则不显示遮罩也不屏蔽输入。
@@ -217,6 +233,7 @@ public sealed class RewardWindow : UIWindow<RewardParam, bool>
 
 窗口初始化使用 `OnInit`，不要依赖 `Start`。可按需覆写：
 
+- `OnReopen(param)`：Single 实例被再次打开时刷新内容。
 - `OnOpened()`：开场动画结束后调用。
 - `OnClosing()`：退场动画开始前调用。
 - `OnUpdate()`：窗口有效期间的每帧逻辑。
@@ -284,6 +301,7 @@ bool received = await _uiManager
 - `contentPrefabAddress`：`Resources/UISystem/Windows` 下的 Prefab 名称，不含扩展名。
 - `style`：窗口使用的公共 Frame 与交互样式。
 - `defaultLayer`：主 Canvas 下的默认分层节点。
+- `openMode`：同 ID 窗口使用 `Multiple` 多实例或 `Single` 复用实例。
 
 UIManager 按以下路径加载资源：
 
@@ -298,14 +316,15 @@ Resources/UISystem/Windows/{entry.contentPrefabAddress}
 
 1. 根据 `UIWindowId` 查询并校验注册项。
 2. 选择主 Canvas 下的目标 Layer 根节点。
-3. 加载并实例化 Frame 和内容 Prefab。
-4. 调用窗口 `OnInit` 绑定参数和事件。
-5. 根据内容首选尺寸布局 Frame。
-6. 将窗口压入栈并播放入场动画。
-7. 动画结束后调用 `OnOpened`。
-8. 等待 `Close()`、`Complete(result)`、ESC、外部点击或 Frame 关闭按钮。
-9. 调用 `OnClosing` 并播放退场动画。
-10. 销毁窗口并恢复下一栈顶窗口的交互。
+3. Single 模式下如果已有有效实例，调用 `OnReopen` 并移到栈顶后直接返回原 Handle。
+4. 否则加载并实例化 Frame 和内容 Prefab。
+5. 调用窗口 `OnInit` 绑定参数和事件。
+6. 根据内容首选尺寸布局 Frame。
+7. 将窗口压入栈并播放入场动画。
+8. 动画结束后调用 `OnOpened`。
+9. 等待 `Close()`、`Complete(result)`、ESC、外部点击或 Frame 关闭按钮。
+10. 调用 `OnClosing` 并播放退场动画。
+11. 销毁窗口并恢复下一栈顶窗口的交互。
 
 任何加载或初始化异常都会清理已经创建的 Frame、Mask 和栈条目。
 

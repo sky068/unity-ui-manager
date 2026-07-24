@@ -80,6 +80,12 @@ namespace Game.UISystem
         /// <summary>开场动画结束后调用，适合启动计时器、焦点或只应在完全显示后执行的逻辑。</summary>
         protected virtual void OnOpened() { }
 
+        /// <summary>
+        /// Single 窗口在实例未关闭时被再次打开后调用。
+        /// 适合使用新参数刷新内容；不要在此重复绑定只需初始化一次的事件。
+        /// </summary>
+        protected virtual void OnReopen(TParam param) { }
+
         /// <summary>关闭动画开始前调用，适合解绑业务监听；不要在这里再次触发关闭。</summary>
         protected virtual void OnClosing() { }
 
@@ -137,6 +143,7 @@ namespace Game.UISystem
         }
 
         internal override bool TryRequestClose() => TryComplete(default);
+        internal void NotifyReopened(TParam param) => OnReopen(param);
         internal override void NotifyOpened()  => OnOpened();
         internal override void NotifyClosing() => OnClosing();
         internal override void MarkClosing()   => _isClosing = true;

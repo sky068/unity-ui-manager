@@ -84,6 +84,9 @@ await handle.Opened; // 仅在确实需要等待开场动画时使用
 ```csharp
 ui.Close(UIWindowId.SettingWindow);             // 同步发起关闭
 await ui.CloseAsync(UIWindowId.SettingWindow);  // 等待退场和清理完成
+
+ui.Close(UIWindowId.SettingWindow, true);             // 关闭全部同 ID 实例
+await ui.CloseAsync(UIWindowId.SettingWindow, true);  // 等待全部同 ID 实例清理完成
 ```
 
 显示 Toast：
@@ -113,10 +116,10 @@ var customView = Object.Instantiate(customViewPrefab, debugLayer, false);
 2. 创建继承 `UIWindow` 或 `UIWindow<TParam, TResult>` 的窗口脚本。
 3. 创建内容 Prefab，并放入 `Assets/Resources/UISystem/Windows/`。
 4. 按需创建或复用 `UIWindowStyle`。
-5. 在 `Assets/UISystem/Config/UIWindowConfig.asset` 中注册窗口 ID、Prefab、样式、默认层级和遮挡策略。
+5. 在 `Assets/UISystem/Config/UIWindowConfig.asset` 中注册窗口 ID、Prefab、样式、实例策略、默认层级和遮挡策略。
 6. 通过 `IUIManager.Open` 打开窗口；需要等待返回值时使用 `OpenForResultAsync`。
 
-窗口内容应在 `OnInit` 中初始化，在 `OnOpened` 中启动仅应在完整显示后执行的逻辑，在 `OnClosing` 中解绑业务监听。
+窗口内容应在 `OnInit` 中初始化；Single 窗口可在 `OnReopen` 中使用新参数刷新内容。在 `OnOpened` 中启动仅应在完整显示后执行的逻辑，在 `OnClosing` 中解绑业务监听。
 
 ## 目录结构
 

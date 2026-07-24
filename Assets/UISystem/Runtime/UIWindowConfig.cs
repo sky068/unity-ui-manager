@@ -4,6 +4,16 @@ using UnityEngine;
 
 namespace Game.UISystem
 {
+    /// <summary>同一 WindowId 的实例创建策略。</summary>
+    public enum UIWindowOpenMode
+    {
+        /// <summary>每次打开都创建独立实例，允许同一 WindowId 同时存在多个窗口。</summary>
+        Multiple = 0,
+
+        /// <summary>同一 WindowId 只保留一个有效实例；再次打开时复用实例并调用 OnReopen。</summary>
+        Single = 1
+    }
+
     /// <summary>窗口稳定显示后，对位于其下方窗口采用的渲染裁剪策略。</summary>
     public enum UIOcclusionMode
     {
@@ -29,6 +39,9 @@ namespace Game.UISystem
 
         [Tooltip("默认显示在哪一层")]
         public UILayer defaultLayer = UILayer.Popup;
+
+        [Tooltip("同一 WindowId 的实例策略。Multiple：每次打开都创建新实例，允许多个并存；Single：复用已有有效实例，移到栈顶并调用 OnReopen。")]
+        public UIWindowOpenMode openMode = UIWindowOpenMode.Multiple;
 
         [Tooltip("窗口打开动画结束后，是否裁剪被它遮挡的下层窗口渲染")]
         public UIOcclusionMode occlusionMode = UIOcclusionMode.KeepVisible;
@@ -102,6 +115,7 @@ namespace Game.UISystem
                 }
                 if (string.IsNullOrWhiteSpace(e.contentPrefabAddress) || e.style == null ||
                     !Enum.IsDefined(typeof(UILayer), e.defaultLayer) ||
+                    !Enum.IsDefined(typeof(UIWindowOpenMode), e.openMode) ||
                     !Enum.IsDefined(typeof(UIOcclusionMode), e.occlusionMode))
                 {
                     Debug.LogWarning($"[UIWindowConfig] windowId='{e.windowId}' 配置不完整，已跳过");

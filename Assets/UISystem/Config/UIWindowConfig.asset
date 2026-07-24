@@ -17,6 +17,7 @@ MonoBehaviour:
     contentPrefabAddress: ConfirmWindow
     style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
     defaultLayer: 200
+    openMode: 0
     occlusionMode: 0
     showMask: 1
     blockInput: 1
@@ -26,6 +27,7 @@ MonoBehaviour:
     contentPrefabAddress: SettingsWindow
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
     defaultLayer: 200
+    openMode: 0
     occlusionMode: 2
     allowFullOcclusion: 1
     showMask: 1
@@ -36,6 +38,7 @@ MonoBehaviour:
     contentPrefabAddress: TipsWindow
     style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
     defaultLayer: 200
+    openMode: 0
     occlusionMode: 0
     showMask: 0
     blockInput: 1
@@ -45,6 +48,7 @@ MonoBehaviour:
     contentPrefabAddress: FullScreenInfoTest
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
     defaultLayer: 200
+    openMode: 0
     occlusionMode: 2
     allowFullOcclusion: 1
     showMask: 0
@@ -55,6 +59,7 @@ MonoBehaviour:
     contentPrefabAddress: FullScreenListTest
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
     defaultLayer: 200
+    openMode: 0
     occlusionMode: 2
     allowFullOcclusion: 1
     showMask: 1
@@ -65,6 +70,7 @@ MonoBehaviour:
     contentPrefabAddress: DialogCompactTest
     style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
     defaultLayer: 200
+    openMode: 0
     occlusionMode: 0
     showMask: 1
     blockInput: 1
@@ -74,6 +80,7 @@ MonoBehaviour:
     contentPrefabAddress: DialogContentTest
     style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
     defaultLayer: 200
+    openMode: 0
     occlusionMode: 1
     showMask: 1
     blockInput: 1
@@ -83,6 +90,7 @@ MonoBehaviour:
     contentPrefabAddress: NoneToastTest
     style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
     defaultLayer: 200
+    openMode: 0
     occlusionMode: 0
     showMask: 0
     blockInput: 1
@@ -92,6 +100,7 @@ MonoBehaviour:
     contentPrefabAddress: NoneLoadingTest
     style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
     defaultLayer: 200
+    openMode: 0
     occlusionMode: 0
     showMask: 0
     blockInput: 1
@@ -101,6 +110,7 @@ MonoBehaviour:
     contentPrefabAddress: CommonToast
     style: {fileID: 11400000, guid: a83fd5e112aa4f73b271df85c8f7d940, type: 2}
     defaultLayer: 400
+    openMode: 0
     occlusionMode: 0
     showMask: 0
     blockInput: 0
