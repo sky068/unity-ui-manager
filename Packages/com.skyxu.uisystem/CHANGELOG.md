@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0 - 2026-07-24
+
+- 核心包移除对 VContainer 的强制依赖，默认使用 Unity 对象工厂。
+- 新增 `IUIObjectFactory` 扩展点，支持可选容器适配器。
+- 将 VContainer 实例化与场景注入迁移到独立适配包。
+
 ## 1.0.0 - 2026-07-24
 
 - 首次整理为可通过 Git URL 安装的 UPM 包。

@@ -1,0 +1,10 @@
+{
+  "name": "com.skyxu.uisystem.vcontainer",
+  "version": "1.1.0",
+  "displayName": "Skyxu UI System VContainer Integration",
+  "description": "Optional VContainer object factory and scene injection integration for Skyxu UI System.",
+  "unity": "2022.3",
+  "author": {
+    "name": "skyxu"
+  }
+}

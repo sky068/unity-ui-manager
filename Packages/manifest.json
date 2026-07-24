@@ -2,6 +2,7 @@
   "dependencies": {
     "com.skyxu.uisystem": "file:com.skyxu.uisystem",
     "com.skyxu.uisystem.installer": "file:com.skyxu.uisystem.installer",
+    "com.skyxu.uisystem.vcontainer": "file:com.skyxu.uisystem.vcontainer",
     "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask#a9e27c03d411d2fca01cc7410c24c97cd77cb539",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.2d.spriteshape": "9.1.1",
@@ -44,5 +45,8 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
-  }
+  },
+  "testables": [
+    "com.skyxu.uisystem.vcontainer"
+  ]
 }

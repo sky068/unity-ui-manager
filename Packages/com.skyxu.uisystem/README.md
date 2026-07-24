@@ -1,6 +1,6 @@
 # Skyxu UI System
 
-适用于 Unity 2022.3 LTS 的异步 uGUI 窗口管理包，提供三种基础 Frame、窗口栈、分层、Toast、动画和 VContainer 注入。
+适用于 Unity 2022.3 LTS 的异步 uGUI 窗口管理包，提供三种基础 Frame、窗口栈、分层、Toast 和动画。核心不依赖 DI 容器。
 
 ## 安装
 
@@ -9,16 +9,20 @@
 在 Package Manager 中选择 **Add package from git URL**，添加：
 
 ```text
-https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem.installer#v1.0.0
+https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem.installer#v1.1.0
 ```
 
 然后执行：
 
 ```text
-Tools > UISystem > Installer > Install Missing Packages
+Tools > UISystem > Installer > Install Core Packages
 ```
 
-确认后，安装器会通过一次 Package Manager 请求添加缺失的 UniTask、VContainer 和同 Git revision 的 UISystem；目标项目已经注册的同名包会跳过。安装器自身不依赖这三个包，因此不会遇到 UISystem 先编译、依赖后安装的问题。正式发布使用固定标签；仓库开发联调时可临时使用 `#main`。
+确认后，安装器会通过一次 Package Manager 请求添加缺失的 UniTask 和同 Git revision 的 UISystem Core；目标项目已经注册的同名包会跳过。正式发布使用固定标签；仓库开发联调时可临时使用 `#main`。
+
+### 可选：VContainer 集成
+
+需要窗口与场景注入时，执行 `Tools > UISystem > Installer > Install VContainer Integration`。它会安装 VContainer 与同版本 `com.skyxu.uisystem.vcontainer` 适配包。然后在 `UISystemScope` 所在 GameObject 添加 `VContainerUISystemAdapter`。普通项目不需要安装这两项。
 
 ### 手动回退
 
@@ -28,17 +32,16 @@ Tools > UISystem > Installer > Install Missing Packages
 {
   "dependencies": {
     "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask#a9e27c03d411d2fca01cc7410c24c97cd77cb539",
-    "jp.hadashikick.vcontainer": "https://github.com/hadashiA/VContainer.git?path=VContainer/Assets/VContainer#49bdeaa1d9b0558b45ecc6f28f6078223d4ca5a4",
-    "com.skyxu.uisystem": "https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem#v1.0.0"
+    "com.skyxu.uisystem": "https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem#v1.1.0"
   }
 }
 ```
 
-Git URL 依赖不能可靠地作为 UPM 包的传递依赖，因此 UniTask 和 VContainer 必须由目标项目显式安装。Unity 的 Input System、TextMeshPro 和 uGUI 已由 `package.json` 声明。
+Git URL 依赖不能可靠地作为 UPM 包的传递依赖，因此 UniTask 必须由目标项目显式安装。Unity 的 Input System、TextMeshPro 和 uGUI 已由 `package.json` 声明。
 
 安装后执行 `Window > TextMeshPro > Import TMP Essential Resources`，确保包内中文字体使用的 TMP Shader 可用。
 
-上面的 `#v1.0.0` 要在仓库已创建对应标签后使用；正式发布前联调可临时换成 `#main`，避免把不存在的标签写入项目。
+上面的 `#v1.1.0` 要在仓库已创建对应标签后使用；正式发布前联调可临时换成 `#main`，避免把不存在的标签写入项目。
 
 ## 初始化
 
@@ -89,12 +92,16 @@ Inspector 中填写相同字符串，并把业务 Prefab 放到 `Assets/Resource
 本包不需要独立 Git 仓库。Git UPM URL 使用 `path` 定位当前仓库中的包目录，并使用片段指定分支、提交或标签：
 
 ```text
-https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem#v1.0.0
+https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem#v1.1.0
 ```
 
 - `?path=/Packages/com.skyxu.uisystem`：只读取该子目录作为 UPM 包。
-- `#v1.0.0`：固定到版本标签；开发联调可临时改为 `#main` 或提交 SHA。
+- `#v1.1.0`：固定到版本标签；开发联调可临时改为 `#main` 或提交 SHA。
 
 发布时先更新 `package.json` 的版本和 `CHANGELOG.md`，测试通过后提交整个仓库并创建同名标签。已发布标签不要覆盖或移动，修复应发布新的补丁版本。
 
-UniTask 和 VContainer 使用 Git URL，不能作为本 Git UPM 包的可靠传递依赖。推荐由独立 Installer 在 UISystem 导入前安装；如果不使用 Installer，使用方必须先把它们显式加入目标项目的 `Packages/manifest.json`。缺少依赖时包代码无法编译，UISystem 自己的初始化菜单也无法代为安装。
+UniTask 使用 Git URL，不能作为本 Git UPM 包的可靠传递依赖。推荐由独立 Installer 在 UISystem 导入前安装；如果不使用 Installer，使用方必须先把它显式加入目标项目的 `Packages/manifest.json`。
+
+## 从 1.0 升级
+
+`UISystemScope` 在 1.1 中不再继承 `LifetimeScope`。不使用 VContainer 时无需额外处理，业务可通过 `UIManager.Instance` 获取服务。继续使用 `[Inject]`、容器实例化或 `UISceneInjectionTarget` 的项目，需要安装 VContainer 适配包并在 `UISystemRoot` 上添加 `VContainerUISystemAdapter`；旧 `UISceneInjectionTarget` 的 Unity GUID 保持不变。

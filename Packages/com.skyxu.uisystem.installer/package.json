@@ -1,8 +1,8 @@
 {
   "name": "com.skyxu.uisystem.installer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Skyxu UI System Installer",
-  "description": "Dependency-free installer for UniTask, VContainer and Skyxu UI System.",
+  "description": "Dependency-free installer for Skyxu UI System core and optional VContainer integration.",
   "unity": "2022.3",
   "author": {
     "name": "skyxu"

@@ -23,6 +23,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.skyxu.uisystem.vcontainer": {
+      "version": "file:com.skyxu.uisystem.vcontainer",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.2d.common": {
       "version": "8.1.1",
       "depth": 1,

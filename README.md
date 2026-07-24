@@ -1,6 +1,6 @@
 # UIManagerDemo
 
-一个面向 Unity 2022.3 LTS 的异步 UI 窗口管理框架与示例。项目使用 uGUI、TextMeshPro、UniTask 和 VContainer，实现窗口栈、分层渲染、参数与返回值、动画、Toast 及跨场景生命周期管理。框架已整理为 `Packages/com.skyxu.uisystem`，可通过 Git UPM 在其他项目复用。
+一个面向 Unity 2022.3 LTS 的异步 UI 窗口管理框架与示例。项目使用 uGUI、TextMeshPro 和 UniTask，实现窗口栈、分层渲染、参数与返回值、动画、Toast 及跨场景生命周期管理。核心包不依赖 DI 容器，VContainer 通过独立适配包按需接入。
 
 ## 主要特性
 
@@ -12,7 +12,7 @@
 - 可配置的安全遮挡裁剪，减少被完全覆盖窗口的 Draw Call
 - 遮罩点击、淡入淡出、缩放和 Toast 滑动动画
 - 独立于主窗口栈的自动计时 Toast
-- VContainer 构造注入及场景对象注入
+- 可替换的 `IUIObjectFactory`，以及可选 VContainer 注入适配包
 - 跨场景持久化的 Canvas 和 EventSystem
 - TextMeshPro 动态中文字体与多图集支持
 - Unity Input System 输入支持
@@ -23,9 +23,9 @@
 - TextMeshPro `3.0.7`
 - Input System `1.19.0`
 - UniTask
-- VContainer
+- VContainer（仅使用可选适配包时需要）
 
-本 Demo 的依赖已写入 `Packages/manifest.json`，Git 依赖同时固定到审核过的 commit。可复用包只需要 UniTask 和 VContainer 两项外部 Git 依赖；Input System、TextMeshPro 和 uGUI 由包清单声明。
+核心包只有 UniTask 是需要目标项目显式安装的外部 Git 依赖；Input System、TextMeshPro 和 uGUI 由包清单声明。本开发工程额外安装 VContainer 与适配包，用于持续编译和测试可选集成。
 
 ## 快速开始
 
@@ -41,10 +41,10 @@
 推荐先在 Package Manager 中选择 **Add package from git URL**，只添加轻量安装器：
 
 ```text
-https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem.installer#v1.0.0
+https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem.installer#v1.1.0
 ```
 
-安装后执行 `Tools > UISystem > Installer > Install Missing Packages`。确认列表后，安装器会一次性添加缺失的 UniTask、VContainer 和同版本 UISystem；已安装的同名包会跳过。安装器自身不引用这三个包，因此能在 UISystem 依赖尚未就绪时先完成编译。正式发布前联调可把 `#v1.0.0` 临时换成 `#main`。
+安装后执行 `Tools > UISystem > Installer > Install Core Packages`。确认列表后，安装器会一次性添加缺失的 UniTask 和同版本 UISystem Core；已安装的同名包会跳过。需要 VContainer 时再执行 `Install VContainer Integration`，它会补齐 VContainer 与同版本适配包。正式发布前联调可把 `#v1.1.0` 临时换成 `#main`。
 
 随后完成项目初始化：
 
@@ -77,48 +77,43 @@ Demo 与 Sample 的对应关系：
 
 发布新版本时：
 
-1. 同步修改 UISystem 与 Installer 两个 `package.json` 的 `version`。
-2. 更新两个包内的 `CHANGELOG.md`。
+1. 同步修改 UISystem、Installer 和 VContainer Integration 三个 `package.json` 的 `version`。
+2. 更新三个包内的 `CHANGELOG.md`。
 3. 完成 Unity 编译、`Validate Installation` 和 PlayMode 测试。
 4. 提交并推送整个仓库，然后创建与版本一致的 Git 标签。
 
 ```bash
 git add -A
-git commit -m "发布 UISystem v1.0.0"
+git commit -m "发布 UISystem v1.1.0"
 git push origin main
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
-UPM URL 中，`?path=/Packages/com.skyxu.uisystem` 表示只安装整个仓库里的该子目录，`#v1.0.0` 表示固定到对应 Git 标签：
+UPM URL 中，`?path=/Packages/com.skyxu.uisystem` 表示只安装整个仓库里的该子目录，`#v1.1.0` 表示固定到对应 Git 标签：
 
 ```text
-https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem#v1.0.0
+https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem#v1.1.0
 ```
 
 因此不需要为包单独创建仓库。开发联调可以临时使用 `#main`；正式项目应使用不可变的版本标签，升级时改为新的标签，不要移动旧标签。
 
-UISystem 的 `package.json` 仍不能可靠地把 Git URL 形式的 UniTask 和 VContainer 声明为传递依赖；若直接安装 UISystem，Runtime 程序集会在初始化菜单加载前就因缺少依赖而编译失败。因此推荐先安装无业务依赖的 Installer，由它在用户确认后补齐三个包。无法使用安装器时，再按包 README 的手动方式编辑 `Packages/manifest.json`。
+UISystem 的 `package.json` 不能可靠地把 Git URL 形式的 UniTask 声明为传递依赖，因此推荐先安装无业务依赖的 Installer。VContainer 已不属于核心依赖，只在安装 `com.skyxu.uisystem.vcontainer` 时需要。无法使用安装器时，按包 README 的手动方式编辑 `Packages/manifest.json`。
 
 ## 基本用法
 
-推荐通过 VContainer 注入 `IUIManager`：
+不使用容器时，从全局 Scope 获取 `IUIManager`：
 
 ```csharp
 using Cysharp.Threading.Tasks;
 using Game.UISystem;
 using Game.UISystem.Example;
-using VContainer;
 
 public sealed class ExamplePresenter
 {
-    private readonly IUIManager ui;
+    private IUIManager ui;
 
-    [Inject]
-    public ExamplePresenter(IUIManager ui)
-    {
-        this.ui = ui;
-    }
+    public void Start() => ui = UIManager.Instance;
 
     public async UniTask<bool> ShowConfirmAsync()
     {
@@ -134,6 +129,8 @@ public sealed class ExamplePresenter
     }
 }
 ```
+
+使用 VContainer 的项目安装可选适配包，并在 `UISystemScope` 所在 GameObject 添加 `VContainerUISystemAdapter` 后，仍可照常通过 `[Inject]` 获取 `IUIManager`。
 
 打开无参数、无返回值窗口：
 
@@ -194,6 +191,9 @@ Packages/com.skyxu.uisystem/
 ├── Editor/                        初始化、安装校验和 Inspector 支持
 └── Samples~/UISystemDemo/         可选示例窗口与场景
 
+Packages/com.skyxu.uisystem.vcontainer/
+└── Runtime/                       可选 VContainer 工厂与场景注入适配器
+
 Assets/
 ├── Resources/UISystem/Windows/    项目业务窗口 Prefab
 └── UISystem/
@@ -203,9 +203,9 @@ Assets/
 
 ## 设计说明
 
-`UISystemScope` 是全局组合根，负责构建 VContainer、持久化 UI 根节点、注入场景对象并维持唯一 EventSystem。`UIManager` 根据 `UIWindowConfig` 加载 Frame 和内容 Prefab，并负责窗口栈、动画、交互状态与资源清理。
+`UISystemScope` 是不依赖容器的全局组合根，负责创建 `UIManager`、持久化 UI 根节点并维持唯一 EventSystem。`UIManager` 通过 `IUIObjectFactory` 创建 Frame 和内容；默认实现是 `UnityUIObjectFactory`。
 
-需要注入的场景对象必须显式添加 `UISceneInjectionTarget`。默认只注入标记对象本身；只有确认整个子树都由场景序列化创建时才开启 `Include Children`，避免重复注入由容器动态创建的对象。
+安装可选适配包并添加 `VContainerUISystemAdapter` 后，窗口工厂会切换为 VContainer。需要注入的场景对象再显式添加 `UISceneInjectionTarget`；默认只注入标记对象本身。
 
 `Open()` 和 `CloseAll()` 都同步发起操作。每次 `CloseAll()` 只关闭调用当刻已有的窗口，之后新开的窗口不会被旧批次关闭；`CloseAllAsync()` 语义相同，但会等待该批窗口完成退场和清理。需要严格视觉串行时先 `await CloseAllAsync()`，再调用 `Open()`。
 
@@ -215,7 +215,7 @@ Assets/
 
 主窗口栈只允许在当前栈顶同层或更高的 Layer 打开新窗口；更低 Layer 会在实例化前抛出明确异常，避免视觉顺序、输入焦点、Esc 和 Mask 所有权错位。Toast 不进入主窗口栈，不受该限制。
 
-业务代码应优先注入 `IUIManager`。`UIManager.Instance` 仅作为非容器代码和旧代码的兼容入口。
+无容器项目使用 `UIManager.Instance` 或 `UISystemScope.Instance.UIManager`；VContainer 项目优先注入 `IUIManager`。
 
 ## 许可证
 

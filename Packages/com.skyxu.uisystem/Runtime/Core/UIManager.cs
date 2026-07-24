@@ -4,8 +4,6 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Threading;
-using VContainer;
-using VContainer.Unity;
 
 namespace Game.UISystem
 {
@@ -271,7 +269,7 @@ namespace Game.UISystem
 
     public class UIManager : IUIManager
     {
-        private readonly IObjectResolver _container;
+        private IUIObjectFactory _objectFactory;
         private readonly UILayerConfig _layerConfig;
         private readonly UIWindowConfig _windowConfig;
         // 主窗口栈负责返回键、CloseTop/CloseTopAsync 和窗口之间的交互互斥。
@@ -325,39 +323,42 @@ namespace Game.UISystem
         {
             get
             {
-                // 静态入口只为非容器代码和历史代码保留。正常业务组件应注入 IUIManager，
-                // 这样依赖关系明确，也便于测试时替换实现。
                 if (_ui != null) return _ui;
                 var scope = UISystemScope.Instance;
-                if (scope == null || scope.Container == null)
+                if (scope == null || scope.UIManager == null)
                 {
                     Debug.LogError("[UIManager] 场景中不存在可用的 UISystemScope");
                     return null;
                 }
 
-                _ui = scope.Container.Resolve<IUIManager>();
+                _ui = scope.UIManager;
                 return _ui;
             }
         }
 
-        internal static void ResetInstance(IUIManager instance)
+        internal static void SetInstance(IUIManager instance)
         {
-            // 持久 Scope 销毁时必须清空缓存，避免下次进入 Play Mode 或重建 Scope 后
-            // 返回已经随旧容器释放的 UIManager。
-            if (ReferenceEquals(_ui, instance) || instance == null)
-                _ui = null;
+            _ui = instance;
         }
 
-        [Inject]
         public UIManager(
-            IObjectResolver container,
+            IUIObjectFactory objectFactory,
             UILayerConfig layerConfig,
             UIWindowConfig windowConfig)
         {
-            // UIManager 是纯 C# 容器单例，所有外部依赖都由 VContainer 构造注入。
-            _container = container ?? throw new ArgumentNullException(nameof(container));
+            _objectFactory = objectFactory ?? throw new ArgumentNullException(nameof(objectFactory));
             _layerConfig = layerConfig ?? throw new ArgumentNullException(nameof(layerConfig));
             _windowConfig = windowConfig ?? throw new ArgumentNullException(nameof(windowConfig));
+        }
+
+        internal void SetObjectFactory(IUIObjectFactory objectFactory)
+        {
+            if (objectFactory == null)
+                throw new ArgumentNullException(nameof(objectFactory));
+            if (_activeEntries.Count > 0)
+                throw new InvalidOperationException("存在活动窗口时不能替换 UI 对象工厂");
+
+            _objectFactory = objectFactory;
         }
 
         public UIWindowHandle<UIUnit> Open(
@@ -426,8 +427,7 @@ namespace Game.UISystem
                 var framePrefab = LoadPrefab("Frames", style.framePrefabAddress, windowId);
                 var contentPrefab = LoadPrefab("Windows", config.contentPrefabAddress, windowId);
 
-                // Frame 和内容都通过容器实例化，确保其中的 [Inject] 在对象激活前完成。
-                frameGo = _container.Instantiate(framePrefab, layerRoot);
+                frameGo = _objectFactory.Instantiate(framePrefab, layerRoot);
                 var frame = frameGo.GetComponent<UIWindowFrame>();
                 if (frame == null || frame.ContentRoot == null)
                     throw new InvalidOperationException(
@@ -437,7 +437,7 @@ namespace Game.UISystem
                     throw new InvalidOperationException(
                         $"[UIManager] Style '{style.name}' 与 Frame '{style.framePrefabAddress}' 类型不一致");
 
-                var contentGo = _container.Instantiate(contentPrefab, frame.ContentRoot);
+                var contentGo = _objectFactory.Instantiate(contentPrefab, frame.ContentRoot);
                 var contentRect = contentGo.GetComponent<RectTransform>();
                 if (contentRect == null)
                     throw new InvalidOperationException(

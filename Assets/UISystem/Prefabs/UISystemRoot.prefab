@@ -193,10 +193,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7bc1b5f70927a45e1b9916a1a96c0847, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  parentReference:
-    TypeName: 
-  autoRun: 1
-  autoInjectGameObjects: []
   layerConfig: {fileID: 1295293932866439880}
   windowConfig: {fileID: 11400000, guid: 2568862a9323f4ea5a2ac508342db91b, type: 2}
   uiRoot: {fileID: 8361119885649324804}

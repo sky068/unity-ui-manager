@@ -5,7 +5,7 @@ using VContainer.Unity;
 namespace Game.UISystem
 {
     /// <summary>
-    /// 显式声明需要由全局 UISystemScope 注入的场景对象。
+    /// 显式声明需要由 VContainerUISystemAdapter 注入的场景对象。
     /// 默认只注入当前 GameObject 上的组件，避免递归扫描时再次注入由容器创建的子对象。
     /// </summary>
     [DisallowMultipleComponent]

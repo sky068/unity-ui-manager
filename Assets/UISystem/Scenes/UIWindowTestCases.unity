@@ -7676,7 +7676,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1878683340}
   - component: {fileID: 1878683341}
-  - component: {fileID: 1878683342}
   m_Layer: 0
   m_Name: WindowTestScenePresenter
   m_TagString: Untagged
@@ -7712,19 +7711,6 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   resultText: {fileID: 2121444371}
---- !u!114 &1878683342
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1878683339}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b43b06fb9a9c4c7aa342d964e6911a8e, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  includeChildren: 0
 --- !u!1 &1918328133
 GameObject:
   m_ObjectHideFlags: 0

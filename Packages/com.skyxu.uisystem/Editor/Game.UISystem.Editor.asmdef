@@ -2,8 +2,7 @@
   "name": "Game.UISystem.Editor",
   "rootNamespace": "Game.UISystem.Editor",
   "references": [
-    "Game.UISystem.Runtime",
-    "VContainer"
+    "Game.UISystem.Runtime"
   ],
   "includePlatforms": [
     "Editor"

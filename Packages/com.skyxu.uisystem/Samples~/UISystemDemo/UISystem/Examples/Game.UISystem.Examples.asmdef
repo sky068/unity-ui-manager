@@ -4,7 +4,6 @@
   "references": [
     "Game.UISystem.Runtime",
     "UniTask",
-    "VContainer",
     "Unity.TextMeshPro",
     "UnityEngine.UI"
   ],

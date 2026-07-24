@@ -3,7 +3,6 @@
   "rootNamespace": "Game.UISystem",
   "references": [
     "UniTask",
-    "VContainer",
     "Unity.InputSystem",
     "Unity.TextMeshPro",
     "UnityEngine.UI"

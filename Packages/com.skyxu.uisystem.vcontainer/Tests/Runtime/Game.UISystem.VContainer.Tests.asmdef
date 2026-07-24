@@ -1,0 +1,19 @@
+{
+  "name": "Game.UISystem.VContainer.Tests",
+  "references": [
+    "Game.UISystem.Runtime",
+    "Game.UISystem.VContainer",
+    "VContainer"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ]
+}

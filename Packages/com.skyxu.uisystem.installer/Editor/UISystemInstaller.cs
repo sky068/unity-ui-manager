@@ -11,14 +11,18 @@ namespace Game.UISystem.Installer
 {
     internal static class UISystemInstaller
     {
-        private const string MenuPath = "Tools/UISystem/Installer/Install Missing Packages";
         private const string PendingKey = "Game.UISystem.Installer.Pending";
+        private const string IntegrationPendingKey =
+            "Game.UISystem.Installer.VContainerPending";
         private const string InstallerPackageName = "com.skyxu.uisystem.installer";
         private const string UISystemPackageName = "com.skyxu.uisystem";
+        private const string VContainerIntegrationPackageName =
+            "com.skyxu.uisystem.vcontainer";
         private const string UniTaskPackageName = "com.cysharp.unitask";
         private const string VContainerPackageName = "jp.hadashikick.vcontainer";
 
-        private const string RepositoryUrl = "https://github.com/sky068/unity-ui-manager.git";
+        private const string RepositoryUrl =
+            "https://github.com/sky068/unity-ui-manager.git";
         private const string UniTaskUrl =
             "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask" +
             "#a9e27c03d411d2fca01cc7410c24c97cd77cb539";
@@ -27,6 +31,7 @@ namespace Game.UISystem.Installer
             "#49bdeaa1d9b0558b45ecc6f28f6078223d4ca5a4";
 
         private static AddAndRemoveRequest _request;
+        private static bool _installingVContainerIntegration;
 
         [InitializeOnLoadMethod]
         private static void ResumeAfterDomainReload()
@@ -35,8 +40,36 @@ namespace Game.UISystem.Installer
                 EditorApplication.delayCall += ReportPendingResult;
         }
 
-        [MenuItem(MenuPath)]
+        [MenuItem("Tools/UISystem/Installer/Install Core Packages")]
         public static void InstallMissingPackages()
+        {
+            BeginInstall(GetMissingCorePackages(), false);
+        }
+
+        [MenuItem("Tools/UISystem/Installer/Install VContainer Integration")]
+        public static void InstallVContainerIntegration()
+        {
+            BeginInstall(GetMissingVContainerIntegrationPackages(), true);
+        }
+
+        [MenuItem("Tools/UISystem/Installer/Show Package Status")]
+        public static void ShowPackageStatus()
+        {
+            var registered = GetRegisteredPackageNames();
+            string status = string.Join("\n", new[]
+            {
+                FormatStatus(UniTaskPackageName, "UniTask", registered),
+                FormatStatus(UISystemPackageName, "UISystem Core", registered),
+                FormatStatus(VContainerPackageName, "VContainer（可选）", registered),
+                FormatStatus(
+                    VContainerIntegrationPackageName,
+                    "UISystem VContainer Integration（可选）",
+                    registered)
+            });
+            ShowMessage("UISystem Package Status", status, false);
+        }
+
+        private static void BeginInstall(List<PackageSpec> missing, bool integration)
         {
             if (_request != null && !_request.IsCompleted)
             {
@@ -44,10 +77,14 @@ namespace Game.UISystem.Installer
                 return;
             }
 
-            List<PackageSpec> missing = GetMissingPackages();
             if (missing.Count == 0)
             {
-                ShowMessage("UISystem Installer", "UniTask、VContainer 和 UISystem 均已安装。", false);
+                ShowMessage(
+                    "UISystem Installer",
+                    integration
+                        ? "UISystem Core、UniTask、VContainer 和适配包均已安装。"
+                        : "UISystem Core 和 UniTask 均已安装。",
+                    false);
                 return;
             }
 
@@ -61,34 +98,24 @@ namespace Game.UISystem.Installer
                 return;
             }
 
+            string title = integration ? "安装 VContainer 集成" : "安装 UISystem Core";
             if (!EditorUtility.DisplayDialog(
-                    "安装 UISystem",
+                    title,
                     "Package Manager 将批量添加以下缺失包：\n\n" + details +
                     "\n\n安装过程需要访问 GitHub，是否继续？",
                     "安装",
                     "取消"))
                 return;
 
+            _installingVContainerIntegration = integration;
             SessionState.SetBool(PendingKey, true);
+            SessionState.SetBool(IntegrationPendingKey, integration);
             _request = Client.AddAndRemove(
                 missing.Select(item => item.Url).ToArray(),
                 Array.Empty<string>());
             EditorApplication.update += PollRequest;
             Debug.Log("[UISystem Installer] 开始安装：" +
                       string.Join(", ", missing.Select(item => item.DisplayName)));
-        }
-
-        [MenuItem("Tools/UISystem/Installer/Show Package Status")]
-        public static void ShowPackageStatus()
-        {
-            var registered = GetRegisteredPackageNames();
-            string status = string.Join("\n", new[]
-            {
-                FormatStatus(UniTaskPackageName, "UniTask", registered),
-                FormatStatus(VContainerPackageName, "VContainer", registered),
-                FormatStatus(UISystemPackageName, "UISystem", registered)
-            });
-            ShowMessage("UISystem Package Status", status, false);
         }
 
         private static void PollRequest()
@@ -101,33 +128,37 @@ namespace Game.UISystem.Installer
 
             if (!_request.IsCompleted)
             {
-                if (!Application.isBatchMode)
-                    EditorUtility.DisplayProgressBar(
-                        "UISystem Installer",
-                        "正在通过 Unity Package Manager 安装依赖……",
-                        0.5f);
+                EditorUtility.DisplayProgressBar(
+                    "UISystem Installer",
+                    "正在通过 Unity Package Manager 安装依赖……",
+                    0.5f);
                 return;
             }
 
             EditorApplication.update -= PollRequest;
-            if (!Application.isBatchMode)
-                EditorUtility.ClearProgressBar();
+            EditorUtility.ClearProgressBar();
+            SessionState.SetBool(PendingKey, false);
 
             if (_request.Status == StatusCode.Success)
             {
-                SessionState.SetBool(PendingKey, false);
+                string installed = _installingVContainerIntegration
+                    ? "UISystem、UniTask、VContainer 和适配包已安装。"
+                    : "UISystem Core 和 UniTask 已安装。";
+                string nextSteps = _installingVContainerIntegration
+                    ? "1. Window > TextMeshPro > Import TMP Essential Resources\n" +
+                      "2. Tools > UISystem > Initialize Project Assets\n" +
+                      "3. 在 UISystemScope 所在对象添加 VContainerUISystemAdapter\n" +
+                      "4. Tools > UISystem > Validate Installation"
+                    : "1. Window > TextMeshPro > Import TMP Essential Resources\n" +
+                      "2. Tools > UISystem > Initialize Project Assets\n" +
+                      "3. Tools > UISystem > Validate Installation";
                 ShowMessage(
                     "UISystem 安装完成",
-                    "UniTask、VContainer 和 UISystem 已安装。\n\n" +
-                    "接下来执行：\n" +
-                    "1. Window > TextMeshPro > Import TMP Essential Resources\n" +
-                    "2. Tools > UISystem > Initialize Project Assets\n" +
-                    "3. Tools > UISystem > Validate Installation",
+                    installed + "\n\n接下来执行：\n" + nextSteps,
                     false);
             }
             else
             {
-                SessionState.SetBool(PendingKey, false);
                 string message = _request.Error?.message ?? "未知 Package Manager 错误";
                 ShowMessage("UISystem 安装失败", message, true);
             }
@@ -140,11 +171,14 @@ namespace Game.UISystem.Installer
             if (!SessionState.GetBool(PendingKey, false))
                 return;
 
-            List<PackageSpec> missing = GetMissingPackages();
+            bool integration = SessionState.GetBool(IntegrationPendingKey, false);
+            List<PackageSpec> missing = integration
+                ? GetMissingVContainerIntegrationPackages()
+                : GetMissingCorePackages();
             if (missing.Count == 0)
             {
                 SessionState.SetBool(PendingKey, false);
-                Debug.Log("[UISystem Installer] 域重载后确认：全部包均已安装。");
+                Debug.Log("[UISystem Installer] 域重载后确认：所选包均已安装。");
             }
             else
             {
@@ -155,17 +189,38 @@ namespace Game.UISystem.Installer
             }
         }
 
-        private static List<PackageSpec> GetMissingPackages()
+        private static List<PackageSpec> GetMissingCorePackages()
         {
             var registered = GetRegisteredPackageNames();
             var missing = new List<PackageSpec>();
-            if (!registered.Contains(UniTaskPackageName))
-                missing.Add(new PackageSpec("UniTask", UniTaskUrl));
+            AddCorePackages(missing, registered);
+            return missing;
+        }
+
+        private static List<PackageSpec> GetMissingVContainerIntegrationPackages()
+        {
+            var registered = GetRegisteredPackageNames();
+            var missing = new List<PackageSpec>();
+            AddCorePackages(missing, registered);
             if (!registered.Contains(VContainerPackageName))
                 missing.Add(new PackageSpec("VContainer", VContainerUrl));
-            if (!registered.Contains(UISystemPackageName))
-                missing.Add(new PackageSpec("Skyxu UI System", BuildUISystemUrl()));
+            if (!registered.Contains(VContainerIntegrationPackageName))
+                missing.Add(new PackageSpec(
+                    "Skyxu UI System VContainer Integration",
+                    BuildRepositoryPackageUrl("com.skyxu.uisystem.vcontainer")));
             return missing;
+        }
+
+        private static void AddCorePackages(
+            List<PackageSpec> missing,
+            HashSet<string> registered)
+        {
+            if (!registered.Contains(UniTaskPackageName))
+                missing.Add(new PackageSpec("UniTask", UniTaskUrl));
+            if (!registered.Contains(UISystemPackageName))
+                missing.Add(new PackageSpec(
+                    "Skyxu UI System Core",
+                    BuildRepositoryPackageUrl("com.skyxu.uisystem")));
         }
 
         private static HashSet<string> GetRegisteredPackageNames() =>
@@ -173,14 +228,14 @@ namespace Game.UISystem.Installer
                 PackageManagerInfo.GetAllRegisteredPackages().Select(package => package.name),
                 StringComparer.Ordinal);
 
-        private static string BuildUISystemUrl()
+        private static string BuildRepositoryPackageUrl(string packageDirectory)
         {
             var installer = PackageManagerInfo.FindForAssetPath(
                 $"Packages/{InstallerPackageName}/package.json");
             string revision = installer?.git?.revision;
             if (string.IsNullOrWhiteSpace(revision))
-                revision = installer?.source == PackageSource.Embedded ? "main" : "v1.0.0";
-            return RepositoryUrl + "?path=/Packages/com.skyxu.uisystem#" +
+                revision = installer?.source == PackageSource.Embedded ? "main" : "v1.1.0";
+            return RepositoryUrl + "?path=/Packages/" + packageDirectory + "#" +
                    Uri.EscapeDataString(revision);
         }
 

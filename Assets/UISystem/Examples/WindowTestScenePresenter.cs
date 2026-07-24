@@ -3,7 +3,6 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using TMPro;
 using UnityEngine;
-using VContainer;
 
 namespace Game.UISystem.Example
 {
@@ -18,12 +17,10 @@ namespace Game.UISystem.Example
         private IUIManager _ui;
         private CancellationTokenSource _operationCancellation;
 
-        [Inject]
-        private void Construct(IUIManager uiManager)
+        private void Start()
         {
-            // 初始场景由 UISystemScope.Awake 扫描注入；后续场景由 sceneLoaded 注入。
-            // 对后续加载场景，Construct 保证在 Start 前调用，但不会早于 Awake/OnEnable。
-            _ui = uiManager;
+            _ui = UIManager.Instance ??
+                  throw new InvalidOperationException("场景中不存在可用的 UISystemScope");
         }
 
         // ── 场景 Button.onClick 入口 ──────────────────────────────────

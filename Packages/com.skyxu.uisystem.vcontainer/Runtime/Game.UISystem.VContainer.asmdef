@@ -1,0 +1,9 @@
+{
+  "name": "Game.UISystem.VContainer",
+  "rootNamespace": "Game.UISystem.VContainerIntegration",
+  "references": [
+    "Game.UISystem.Runtime",
+    "VContainer"
+  ],
+  "autoReferenced": true
+}

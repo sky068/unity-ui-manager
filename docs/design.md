@@ -7,8 +7,9 @@
 核心依赖：
 
 - **UniTask**：等待窗口打开、返回结果和关闭动画。
-- **VContainer**：实例化窗口内容并支持依赖注入。
 - **UIUnit**：框架内置的无参数或无返回值类型，不再为此引入 R3。
+
+VContainer 不再是核心依赖。需要依赖注入的项目可安装独立适配包，它通过 `IUIObjectFactory` 接管窗口实例化。
 
 可以直接打开 `Assets/UISystem/Scenes/UIWindowTestCases.unity` 运行。场景中的按钮分别展示已经注册的 Dialog、FullScreen、None 窗口和 Common Toast。
 
@@ -38,10 +39,10 @@ Assets/
 推荐通过 Package Manager 的 Git URL 先安装无业务依赖的 Installer：
 
 ```text
-https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem.installer#v1.0.0
+https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem.installer#v1.1.0
 ```
 
-执行 `Tools > UISystem > Installer > Install Missing Packages` 并确认后，安装器会批量补齐 UniTask、VContainer 和同版本 UISystem，跳过已经注册的包。再依次执行 `Window > TextMeshPro > Import TMP Essential Resources`、`Tools > UISystem > Initialize Project Assets` 和 `Tools > UISystem > Validate Installation`。初始化菜单只补齐缺失的配置、Root Prefab 和 `Resources/UISystem/Windows` 目录，不覆盖已有文件。需要参考实现时，从 Package Manager 按需导入 **UISystem Demo** Sample。正式发布使用固定标签；标签尚未创建的开发阶段可临时使用 `#main`。安装器不可用时，按包 README 手动把三个 Git URL 写入目标项目的 `Packages/manifest.json`。
+执行 `Tools > UISystem > Installer > Install Core Packages` 并确认后，安装器会批量补齐 UniTask 和同版本 UISystem Core。需要 VContainer 时另行执行 `Install VContainer Integration`。再依次执行 `Window > TextMeshPro > Import TMP Essential Resources`、`Tools > UISystem > Initialize Project Assets` 和 `Tools > UISystem > Validate Installation`。初始化菜单只补齐缺失的配置、Root Prefab 和 `Resources/UISystem/Windows` 目录，不覆盖已有文件。
 
 ### 包开发边界
 
@@ -55,27 +56,34 @@ https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem
 - `UISystemScope`，负责注册并提供 `UIManager`。
 - `EventSystem`，负责 UI 输入。
 
-`UISystemScope` 会对整个 `UISystemRoot` 调用 `DontDestroyOnLoad`，所以切换业务场景后 UIManager、Canvas 和 EventSystem 都会保留。切换活动场景时，UIManager 会立即清理全部活动 UI（包括普通窗口、Loading 和 Toast），不播放退场动画，避免旧 UI 覆盖新场景。UISystemScope 使用较早的脚本执行顺序注入初始场景，并监听 `sceneLoaded` 注入之后加载的所有场景，包括 Additive 场景；每个场景按 `Scene.handle` 保证只处理一次。需要注入的场景对象必须显式添加 `UISceneInjectionTarget`，默认只注入标记对象本身。只有确认整个子树都由场景序列化创建时才开启 `Include Children`，避免重复注入由容器动态创建的对象。后续场景不需要重复添加 UISystemRoot Prefab，也不要再创建单独的 EventSystem；如果场景中存在额外 EventSystem，UISystemScope 会记录警告并只移除重复的 EventSystem/InputModule 组件，不会删除业务 GameObject。
+`UISystemScope` 会对整个 `UISystemRoot` 调用 `DontDestroyOnLoad`，所以切换业务场景后 UIManager、Canvas 和 EventSystem 都会保留。切换活动场景时，UIManager 会立即清理全部活动 UI（包括普通窗口、Loading 和 Toast），不播放退场动画。核心 Scope 默认使用 `UnityUIObjectFactory`，不扫描或注入场景对象。后续场景不需要重复添加 UISystemRoot，也不要再创建单独的 EventSystem。
 
-业务组件推荐由 VContainer 注入 `IUIManager`：
+无容器项目在 `Start` 或更晚阶段获取服务：
 
 ```csharp
 private IUIManager _uiManager;
 
-[Inject]
-private void Construct(IUIManager uiManager)
+private void Start()
 {
-    _uiManager = uiManager;
+    _uiManager = UIManager.Instance;
 }
 ```
 
-`UIManager.Instance` 仅作为无法由容器创建或注入的旧代码兼容入口。
+### 可选 VContainer 适配
+
+安装 `com.skyxu.uisystem.vcontainer` 后，在 `UISystemScope` 所在 GameObject 添加 `VContainerUISystemAdapter`。适配器会：
+
+- 向容器注册 `IUIManager` 和 `UISystemScope`。
+- 使用 VContainer 创建 Frame 与窗口内容。
+- 扫描并注入显式添加 `UISceneInjectionTarget` 的场景对象。
+
+此时业务组件可以继续使用 `[Inject] IUIManager`。
 
 #### 注入时机限制（重要）
 
 > **场景对象只能保证在 `Start` 前完成注入。禁止在场景对象的 `Awake` 或 `OnEnable` 中使用注入字段。**
 
-原因是 Unity 对后续加载场景的生命周期顺序为：场景对象先执行 `Awake/OnEnable`，随后触发 `sceneLoaded`；`UISystemScope` 在 `sceneLoaded` 中完成注入，最后 Unity 才执行 `Start`。因此推荐写法是：
+该限制只针对 VContainer 场景注入。Unity 对后续加载场景的生命周期顺序为：场景对象先执行 `Awake/OnEnable`，随后触发 `sceneLoaded`；适配器在 `sceneLoaded` 中完成注入，最后 Unity 才执行 `Start`。
 
 ```csharp
 [Inject]
@@ -103,19 +111,19 @@ private void Start()
 }
 ```
 
-即使初始场景通过较早执行的 `UISystemScope` 通常能在普通组件 `Awake` 前完成注入，业务代码也不应依赖这一差异；所有场景对象统一从 `Start` 或更晚阶段使用注入字段。
+即使初始场景通过较早执行的适配器通常能在普通组件 `Awake` 前完成注入，业务代码也不应依赖这一差异；所有场景对象统一从 `Start` 或更晚阶段使用注入字段。
 
 运行时动态创建的对象应使用容器实例化。VContainer 会在对象激活和执行 `Awake/OnEnable` 前完成注入：
 
 ```csharp
-var instance = UISystemScope.Instance.Container.Instantiate(prefab);
+var instance = adapter.Container.Instantiate(prefab);
 ```
 
 如果旧代码必须使用 `Object.Instantiate`，创建后需要补做注入。此方式无法追回已经执行的 `Awake/OnEnable`，只能在调用 `InjectGameObject` 之后使用注入字段：
 
 ```csharp
 var instance = Object.Instantiate(prefab);
-UISystemScope.Instance.InjectGameObject(instance);
+adapter.InjectGameObject(instance);
 ```
 
 ## 3. Demo 中的三种使用方式
