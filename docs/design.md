@@ -40,7 +40,7 @@ Assets/
 - `UISystemScope`，负责注册并提供 `UIManager`。
 - `EventSystem`，负责 UI 输入。
 
-`UISystemScope` 会对整个 `UISystemRoot` 调用 `DontDestroyOnLoad`，所以切换业务场景后 UIManager、Canvas 和 EventSystem 都会保留。切换活动场景时，UIManager 会立即清理全部活动 UI（包括普通窗口、Loading 和 Toast），不播放退场动画，避免旧 UI 覆盖新场景。UISystemScope 使用较早的脚本执行顺序注入初始场景，并监听 `sceneLoaded` 注入之后加载的所有场景，包括 Additive 场景；每个场景按 `Scene.handle` 保证只注入一次。后续场景不需要重复添加该 Prefab，也不要再创建单独的 EventSystem；如果场景中存在额外 EventSystem，UISystemScope 会记录警告并只移除重复的 EventSystem/InputModule 组件，不会删除业务 GameObject。
+`UISystemScope` 会对整个 `UISystemRoot` 调用 `DontDestroyOnLoad`，所以切换业务场景后 UIManager、Canvas 和 EventSystem 都会保留。切换活动场景时，UIManager 会立即清理全部活动 UI（包括普通窗口、Loading 和 Toast），不播放退场动画，避免旧 UI 覆盖新场景。UISystemScope 使用较早的脚本执行顺序注入初始场景，并监听 `sceneLoaded` 注入之后加载的所有场景，包括 Additive 场景；每个场景按 `Scene.handle` 保证只处理一次。需要注入的场景对象必须显式添加 `UISceneInjectionTarget`，默认只注入标记对象本身。只有确认整个子树都由场景序列化创建时才开启 `Include Children`，避免重复注入由容器动态创建的对象。后续场景不需要重复添加 UISystemRoot Prefab，也不要再创建单独的 EventSystem；如果场景中存在额外 EventSystem，UISystemScope 会记录警告并只移除重复的 EventSystem/InputModule 组件，不会删除业务 GameObject。
 
 业务组件推荐由 VContainer 注入 `IUIManager`：
 
@@ -157,7 +157,7 @@ await _uiManager.CloseAsync(UIWindowId.ConfirmWindow, true);
 `UIWindowEntry.openMode` 默认为 `Multiple`：
 
 - `Multiple`：每次打开都创建独立实例。
-- `Single`：复用同 ID 的有效实例，将它移到栈顶并调用 `OnReopen(param)`。
+- `Single`：复用同 ID 的有效实例，将它移到栈顶并调用 `OnReopen(param)`；当前设置页和自动化测试覆盖该模式。
 
 Single 实例已进入关闭流程时不再复用，新的 `Open` 会创建新实例。
 
@@ -177,7 +177,7 @@ _uiManager.ShowToast(
     ToastDuration.Long);
 ```
 
-`icon` 是 `Resources` 下的 Sprite 路径，不含扩展名。它可以为 `null`；未传图标或资源不存在时，图标节点会隐藏且不占布局空间，文本自动居中。可选时长为：
+`icon` 是 `Resources/UISystem/Icons/` 下的 Sprite 路径，不含扩展名，例如 `UISystem/Icons/reward`。它可以为 `null`；非法路径、未传图标或资源不存在时，图标节点会隐藏且不占布局空间，文本自动居中。Toast 文本以纯文本显示并限制为 256 个 UTF-16 字符；单次运行最多接受 32 个不同图标路径。可选时长为：
 
 - `ToastDuration.Short`：1 秒。
 - `ToastDuration.Normal`：2 秒。

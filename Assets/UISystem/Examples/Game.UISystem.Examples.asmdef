@@ -1,0 +1,13 @@
+{
+  "name": "Game.UISystem.Examples",
+  "rootNamespace": "Game.UISystem.Example",
+  "references": [
+    "Game.UISystem.Runtime",
+    "UniTask",
+    "R3.Unity",
+    "VContainer",
+    "Unity.TextMeshPro",
+    "UnityEngine.UI"
+  ],
+  "autoReferenced": true
+}

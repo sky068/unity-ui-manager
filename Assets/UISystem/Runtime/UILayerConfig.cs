@@ -41,6 +41,11 @@ namespace Game.UISystem
             // Layer 数量很少，初始化或 Inspector 修改时整体重建比维护增量缓存更可靠。
             _dict = new Dictionary<UILayer, RectTransform>();
             var validEntries = new List<UILayerEntry>();
+            if (layers == null)
+            {
+                Debug.LogError("[UILayerConfig] layers 不能为空");
+                return _dict;
+            }
             foreach (var e in layers)
             {
                 if (e == null || !System.Enum.IsDefined(typeof(UILayer), e.layer))

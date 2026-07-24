@@ -83,8 +83,7 @@ namespace Game.UISystem
             EnsureSingleEventSystem();
 
             // 主动注入当前活动场景，避免初始场景错过 sceneLoaded 订阅。
-            // InjectScene 会按 Scene.handle 去重，即使 Unity 随后再次派发 sceneLoaded，
-            // 同一场景中的 [Inject] 方法也只会执行一次。
+            // 只处理显式 UISceneInjectionTarget，避免再次注入由容器创建的对象。
             InjectScene(SceneManager.GetActiveScene());
 
             // sceneLoaded 覆盖 Single 和 Additive 加载；activeSceneChanged 只表示活动场景发生切换。
@@ -140,13 +139,16 @@ namespace Game.UISystem
             if (!_injectedSceneHandles.Add(scene.handle))
                 return;
 
-            // 对场景所有根节点递归注入，覆盖未由 Container.Instantiate 创建的场景对象。
-            // 这里只会处理场景加载时已经存在的对象；之后用 Object.Instantiate 创建的对象
-            // 不会自动进入本次扫描，必须使用 Container.Instantiate 或手动调用 InjectGameObject。
+            // 只注入显式标记的场景对象。动态对象必须使用 Container.Instantiate，
+            // 或在 Object.Instantiate 后显式调用 InjectGameObject。
             try
             {
                 foreach (var root in scene.GetRootGameObjects())
-                    Container.InjectGameObject(root);
+                {
+                    var targets = root.GetComponentsInChildren<UISceneInjectionTarget>(true);
+                    for (int i = 0; i < targets.Length; i++)
+                        targets[i].Inject(Container);
+                }
             }
             catch
             {

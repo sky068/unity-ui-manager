@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.cysharp.r3": {
-      "version": "https://github.com/Cysharp/R3.git?path=src/R3.Unity/Assets/R3.Unity",
+      "version": "https://github.com/Cysharp/R3.git?path=src/R3.Unity/Assets/R3.Unity#dc69078430149db8cd93069f502cefe148745b4b",
       "depth": 0,
       "source": "git",
       "dependencies": {
@@ -10,14 +10,14 @@
       "hash": "dc69078430149db8cd93069f502cefe148745b4b"
     },
     "com.cysharp.unitask": {
-      "version": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask",
+      "version": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask#a9e27c03d411d2fca01cc7410c24c97cd77cb539",
       "depth": 0,
       "source": "git",
       "dependencies": {},
       "hash": "a9e27c03d411d2fca01cc7410c24c97cd77cb539"
     },
     "com.github-glitchenzo.nugetforunity": {
-      "version": "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity",
+      "version": "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity#c2af83c9d4f8cdaada9d4a0e94de2f195d8e1d01",
       "depth": 0,
       "source": "git",
       "dependencies": {},
@@ -141,7 +141,7 @@
       }
     },
     "jp.hadashikick.vcontainer": {
-      "version": "https://github.com/hadashiA/VContainer.git?path=VContainer/Assets/VContainer",
+      "version": "https://github.com/hadashiA/VContainer.git?path=VContainer/Assets/VContainer#49bdeaa1d9b0558b45ecc6f28f6078223d4ca5a4",
       "depth": 0,
       "source": "git",
       "dependencies": {},

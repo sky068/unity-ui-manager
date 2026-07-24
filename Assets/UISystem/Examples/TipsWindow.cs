@@ -27,10 +27,15 @@ namespace Game.UISystem.Example
             }
 
             SetTitle(param.Title);
-            messageText.text = param.Message;
+            messageText.richText = false;
+            messageText.text = UITextSafety.NormalizePlainText(param.Message, 512);
 
             var txt = okBtn.GetComponentInChildren<TMP_Text>();
-            if (txt != null) txt.text = param.OkText;
+            if (txt != null)
+            {
+                txt.richText = false;
+                txt.text = UITextSafety.NormalizePlainText(param.OkText, 40);
+            }
 
             okBtn.onClick.AddListener(() => Complete(R3.Unit.Default));
         }

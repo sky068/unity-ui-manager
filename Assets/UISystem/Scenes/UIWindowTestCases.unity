@@ -509,7 +509,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnCloseTopClicked
         m_Mode: 0
         m_Arguments:
@@ -664,7 +664,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnOpenForResultClicked
         m_Mode: 0
         m_Arguments:
@@ -933,7 +933,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnCommonToastClicked
         m_Mode: 0
         m_Arguments:
@@ -1242,7 +1242,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnCloseAllAsyncClicked
         m_Mode: 0
         m_Arguments:
@@ -1963,7 +1963,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnDialogContentClicked
         m_Mode: 0
         m_Arguments:
@@ -3018,7 +3018,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnFullScreenInfoClicked
         m_Mode: 0
         m_Arguments:
@@ -3441,7 +3441,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnFullScreenListClicked
         m_Mode: 0
         m_Arguments:
@@ -3770,7 +3770,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnWaitOpenedClicked
         m_Mode: 0
         m_Arguments:
@@ -3925,7 +3925,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnCloseByIdClicked
         m_Mode: 0
         m_Arguments:
@@ -4297,7 +4297,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnHandleCloseClicked
         m_Mode: 0
         m_Arguments:
@@ -4680,7 +4680,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnTipsClicked
         m_Mode: 0
         m_Arguments:
@@ -4875,7 +4875,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnCloseAllImmediatelyClicked
         m_Mode: 0
         m_Arguments:
@@ -5164,7 +5164,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnOpenClicked
         m_Mode: 0
         m_Arguments:
@@ -5681,7 +5681,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnSettingsClicked
         m_Mode: 0
         m_Arguments:
@@ -6238,7 +6238,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnNoneLoadingClicked
         m_Mode: 0
         m_Arguments:
@@ -6527,7 +6527,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnConfirmClicked
         m_Mode: 0
         m_Arguments:
@@ -6835,7 +6835,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnCloseByIdAsyncClicked
         m_Mode: 0
         m_Arguments:
@@ -7081,7 +7081,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnCloseTopAsyncClicked
         m_Mode: 0
         m_Arguments:
@@ -7676,6 +7676,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1878683340}
   - component: {fileID: 1878683341}
+  - component: {fileID: 1878683342}
   m_Layer: 0
   m_Name: WindowTestScenePresenter
   m_TagString: Untagged
@@ -7711,6 +7712,19 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   resultText: {fileID: 2121444371}
+--- !u!114 &1878683342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878683339}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b43b06fb9a9c4c7aa342d964e6911a8e, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  includeChildren: 0
 --- !u!1 &1918328133
 GameObject:
   m_ObjectHideFlags: 0
@@ -8106,7 +8120,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnCloseAllClicked
         m_Mode: 0
         m_Arguments:
@@ -8470,7 +8484,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnWaitClosedClicked
         m_Mode: 0
         m_Arguments:
@@ -8625,7 +8639,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnOpenWithParamClicked
         m_Mode: 0
         m_Arguments:
@@ -8847,7 +8861,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnNoneToastClicked
         m_Mode: 0
         m_Arguments:
@@ -9270,7 +9284,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnDialogCompactClicked
         m_Mode: 0
         m_Arguments:
@@ -9445,7 +9459,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnLargeOverSmallClicked
         m_Mode: 0
         m_Arguments:
@@ -9734,7 +9748,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnSmallOverLargeClicked
         m_Mode: 0
         m_Arguments:
@@ -10023,7 +10037,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1878683341}
         m_TargetAssemblyTypeName: Game.UISystem.Example.WindowTestScenePresenter,
-          Assembly-CSharp
+          Game.UISystem.Examples
         m_MethodName: OnFullScreenOverDialogClicked
         m_Mode: 0
         m_Arguments:

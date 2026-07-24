@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using R3;
 using TMPro;
@@ -20,6 +21,9 @@ namespace Game.UISystem
 
     public sealed class CommonToast : UIWindow<CommonToastParam, Unit>
     {
+        private const int MaxUniqueIconPaths = 32;
+        private static readonly HashSet<string> LoadedIconPaths = new HashSet<string>();
+
         [SerializeField] private Image iconImage;
         [SerializeField] private TMP_Text messageText;
 
@@ -38,13 +42,29 @@ namespace Game.UISystem
             {
                 _duration = param.Duration;
             }
-            messageText.text = param.Text ?? string.Empty;
+            messageText.richText = false;
+            messageText.text = UITextSafety.NormalizePlainText(param.Text, 256);
 
-            Sprite icon = string.IsNullOrWhiteSpace(param.IconPath)
-                ? null
-                : Resources.Load<Sprite>(param.IconPath);
-            if (!string.IsNullOrWhiteSpace(param.IconPath) && icon == null)
-                Debug.LogWarning($"[CommonToast] 找不到图标资源：{param.IconPath}");
+            string iconPath = UITextSafety.NormalizeToastIconPath(param.IconPath);
+            if (!string.IsNullOrWhiteSpace(param.IconPath) && iconPath == null)
+                Debug.LogWarning("[CommonToast] 图标路径必须位于 UISystem/Icons 且只能包含安全字符");
+
+            Sprite icon = null;
+            if (iconPath != null)
+            {
+                if (!LoadedIconPaths.Contains(iconPath) &&
+                    LoadedIconPaths.Count >= MaxUniqueIconPaths)
+                {
+                    Debug.LogWarning("[CommonToast] 本次运行加载的不同图标已达到上限");
+                }
+                else
+                {
+                    LoadedIconPaths.Add(iconPath);
+                    icon = Resources.Load<Sprite>(iconPath);
+                    if (icon == null)
+                        Debug.LogWarning($"[CommonToast] 找不到图标资源：{iconPath}");
+                }
+            }
 
             bool hasIcon = icon != null;
             iconImage.gameObject.SetActive(hasIcon);

@@ -77,7 +77,8 @@ namespace Game.UISystem.Example
                 label.font = sourceText.font;
                 label.fontSharedMaterial = sourceText.fontSharedMaterial;
             }
-            label.text = buttonLabel ?? string.Empty;
+            label.richText = false;
+            label.text = UITextSafety.NormalizePlainText(buttonLabel, 40);
             label.fontSize = 18f;
             label.color = Color.white;
             label.alignment = TextAlignmentOptions.Center;

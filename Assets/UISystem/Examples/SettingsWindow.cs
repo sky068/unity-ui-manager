@@ -18,6 +18,8 @@ namespace Game.UISystem.Example
         }
 
         protected override void OnOpened()  => Debug.Log("[SettingsWindow] 已打开");
+        protected override void OnReopen(R3.Unit _) =>
+            Debug.Log("[SettingsWindow] Single 实例已复用");
         protected override void OnClosing() => Debug.Log("[SettingsWindow] 正在关闭");
     }
 }

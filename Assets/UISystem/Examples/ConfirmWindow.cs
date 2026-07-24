@@ -29,7 +29,8 @@ namespace Game.UISystem.Example
             }
 
             SetTitle(param.Title);
-            messageText.text = param.Message;
+            messageText.richText = false;
+            messageText.text = UITextSafety.NormalizePlainText(param.Message, 512);
             SetBtnLabel(confirmBtn, param.Confirm);
             SetBtnLabel(cancelBtn,  param.Cancel);
 
@@ -40,7 +41,11 @@ namespace Game.UISystem.Example
         void SetBtnLabel(Button btn, string label)
         {
             var txt = btn.GetComponentInChildren<TMP_Text>();
-            if (txt != null) txt.text = label;
+            if (txt != null)
+            {
+                txt.richText = false;
+                txt.text = UITextSafety.NormalizePlainText(label, 40);
+            }
         }
     }
 }

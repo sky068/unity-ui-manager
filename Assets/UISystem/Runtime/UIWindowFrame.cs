@@ -104,7 +104,10 @@ namespace Game.UISystem
         public void SetTitle(string title)
         {
             if (titleText != null)
-                titleText.text = title;
+            {
+                titleText.richText = false;
+                titleText.text = UITextSafety.NormalizePlainText(title, 80);
+            }
         }
 
         public void SetCloseAction(System.Action onClose)

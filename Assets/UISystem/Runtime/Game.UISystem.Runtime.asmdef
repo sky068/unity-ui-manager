@@ -1,0 +1,13 @@
+{
+  "name": "Game.UISystem.Runtime",
+  "rootNamespace": "Game.UISystem",
+  "references": [
+    "UniTask",
+    "R3.Unity",
+    "VContainer",
+    "Unity.InputSystem",
+    "Unity.TextMeshPro",
+    "UnityEngine.UI"
+  ],
+  "autoReferenced": true
+}

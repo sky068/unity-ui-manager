@@ -27,7 +27,7 @@ MonoBehaviour:
     contentPrefabAddress: SettingsWindow
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
     defaultLayer: 200
-    openMode: 0
+    openMode: 1
     occlusionMode: 2
     allowFullOcclusion: 1
     showMask: 1

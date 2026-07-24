@@ -159,6 +159,8 @@ namespace Game.UISystem
         public bool OpenAnimationComplete { get; set; }
         public bool IsFrameCulled { get; private set; }
         public bool IsMaskCulled { get; private set; }
+        private readonly List<CanvasRenderer> _frameRenderers = new List<CanvasRenderer>();
+        private readonly List<CanvasRenderer> _maskRenderers = new List<CanvasRenderer>();
 
         public StackEntry(
             UIWindowBase window,
@@ -240,18 +242,20 @@ namespace Game.UISystem
             // 已显示且状态不变时无需扫描；被裁剪节点仍会刷新一次，以覆盖 TMP 在文字
             // 变化后动态创建的子 Renderer。栈变化频率低，这里优先保证恢复显示正确。
             if (cullFrame || IsFrameCulled != cullFrame)
-                SetCulled(FrameGo, cullFrame);
+                SetCulled(FrameGo, cullFrame, _frameRenderers);
             if (cullMask || IsMaskCulled != cullMask)
-                SetCulled(MaskGo, cullMask);
+                SetCulled(MaskGo, cullMask, _maskRenderers);
             IsFrameCulled = cullFrame;
             IsMaskCulled = cullMask;
         }
 
-        private static void SetCulled(GameObject root, bool culled)
+        private static void SetCulled(
+            GameObject root, bool culled, List<CanvasRenderer> renderers)
         {
             if (root == null) return;
-            var renderers = root.GetComponentsInChildren<CanvasRenderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
+            renderers.Clear();
+            root.GetComponentsInChildren(true, renderers);
+            for (int i = 0; i < renderers.Count; i++)
             {
                 var renderer = renderers[i];
                 if (renderer == null || renderer.cull == culled)
@@ -282,6 +286,9 @@ namespace Game.UISystem
         private long _nextOpenSequence;
         private bool _isClosingAll;
         private int _closeAllOperationCount;
+        private readonly List<StackEntry> _occlusionBuffer = new List<StackEntry>();
+        private readonly List<StackEntry> _maskSearchBuffer = new List<StackEntry>();
+        private readonly Vector3[] _worldCorners = new Vector3[4];
 
         public int OpenCount => _stack.Count;
         public Canvas UICanvas => _layerConfig.UICanvas;
@@ -387,7 +394,17 @@ namespace Game.UISystem
                         throw new InvalidOperationException(
                             $"[UIManager] Single Window '{windowId}' 的参数或返回值类型与已有实例不一致");
 
-                    existingWindow.NotifyReopened(param);
+                    try
+                    {
+                        existingWindow.NotifyReopened(param);
+                    }
+                    catch
+                    {
+                        // OnReopen 可能已经部分修改 UI。异常时关闭旧实例，避免它以半刷新
+                        // 状态继续留在活动栈中；原异常仍交给调用方处理。
+                        existing.Window.TryRequestClose();
+                        throw;
+                    }
                     if (!existing.Window.IsCloseRequested && !existing.Window.IsClosing)
                         BringToTop(existing);
                     return existingHandle;
@@ -1052,7 +1069,8 @@ namespace Game.UISystem
 
             // Stack 枚举顺序为栈顶到栈底。只有动画完成、未开始关闭且自身可见的窗口
             // 才能成为遮挡源；这样开场/退场动画不会露出透明空洞。
-            var occluders = new List<StackEntry>(_stack.Count);
+            _occlusionBuffer.Clear();
+            var occluders = _occlusionBuffer;
             if (!_isClosingAll && (_maskOwner == null || !_maskOwner.IsInStack ||
                                    _maskOwner.MaskGo == null))
                 _maskOwner = ResolveMaskOwner();
@@ -1113,7 +1131,8 @@ namespace Game.UISystem
 
         private StackEntry FindNextMaskOwner(StackEntry excluding)
         {
-            var occluders = new List<StackEntry>();
+            _maskSearchBuffer.Clear();
+            var occluders = _maskSearchBuffer;
             foreach (var entry in _stack)
             {
                 if (ReferenceEquals(entry, excluding) || entry.Window.IsClosing)
@@ -1230,14 +1249,13 @@ namespace Game.UISystem
             return upperLayer.GetSiblingIndex() > lowerLayer.GetSiblingIndex();
         }
 
-        private static bool FullyCovers(RectTransform opaqueRect, RectTransform targetRect)
+        private bool FullyCovers(RectTransform opaqueRect, RectTransform targetRect)
         {
             if (opaqueRect == null || targetRect == null ||
                 !opaqueRect.gameObject.activeInHierarchy || !targetRect.gameObject.activeInHierarchy)
                 return false;
 
-            var corners = new Vector3[4];
-            targetRect.GetWorldCorners(corners);
+            targetRect.GetWorldCorners(_worldCorners);
             Rect localOpaqueRect = opaqueRect.rect;
             const float epsilon = 0.5f;
             localOpaqueRect.xMin += epsilon;
@@ -1245,9 +1263,9 @@ namespace Game.UISystem
             localOpaqueRect.yMin += epsilon;
             localOpaqueRect.yMax -= epsilon;
 
-            for (int i = 0; i < corners.Length; i++)
+            for (int i = 0; i < _worldCorners.Length; i++)
             {
-                Vector3 localPoint = opaqueRect.InverseTransformPoint(corners[i]);
+                Vector3 localPoint = opaqueRect.InverseTransformPoint(_worldCorners[i]);
                 if (!localOpaqueRect.Contains(new Vector2(localPoint.x, localPoint.y)))
                     return false;
             }

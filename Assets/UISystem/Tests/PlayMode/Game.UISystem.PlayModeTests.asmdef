@@ -1,0 +1,24 @@
+{
+  "name": "Game.UISystem.PlayModeTests",
+  "references": [
+    "Game.UISystem.Runtime",
+    "Game.UISystem.Examples",
+    "UniTask",
+    "R3.Unity",
+    "UnityEngine.UI"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "R3.dll",
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ]
+}

@@ -26,7 +26,7 @@
 - R3
 - VContainer
 
-依赖已写入 `Packages/manifest.json`，首次打开项目时由 Unity Package Manager 自动恢复。Git 依赖恢复需要能够访问 GitHub。
+依赖已写入 `Packages/manifest.json`，Git 依赖同时固定到审核过的 commit，首次打开项目时由 Unity Package Manager 自动恢复。恢复仍需要能够访问 GitHub。
 
 ## 快速开始
 
@@ -95,6 +95,8 @@ await ui.CloseAsync(UIWindowId.SettingWindow, true);  // 等待全部同 ID 实�
 ui.ShowToast("保存成功", time: ToastDuration.Normal);
 ```
 
+Toast 文本按纯文本显示并限制长度；图标路径仅允许 `UISystem/Icons/` 目录，避免不可信文本改变提示语义或任意探测 Resources。
+
 查询当前仍处于开场、显示或退场生命周期中的全屏窗口数量：
 
 ```csharp
@@ -119,7 +121,7 @@ var customView = Object.Instantiate(customViewPrefab, debugLayer, false);
 5. 在 `Assets/UISystem/Config/UIWindowConfig.asset` 中注册窗口 ID、Prefab、样式、实例策略、默认层级和遮挡策略。
 6. 通过 `IUIManager.Open` 打开窗口；需要等待返回值时使用 `OpenForResultAsync`。
 
-窗口内容应在 `OnInit` 中初始化；Single 窗口可在 `OnReopen` 中使用新参数刷新内容。在 `OnOpened` 中启动仅应在完整显示后执行的逻辑，在 `OnClosing` 中解绑业务监听。
+窗口内容应在 `OnInit` 中初始化；Single 窗口可在 `OnReopen` 中使用新参数刷新内容。`OnReopen` 应先校验参数再一次性更新 UI；抛出异常时管理器会关闭该实例，避免半刷新状态继续存在。在 `OnOpened` 中启动仅应在完整显示后执行的逻辑，在 `OnClosing` 中解绑业务监听。
 
 ## 目录结构
 
@@ -140,6 +142,8 @@ Assets/
 ## 设计说明
 
 `UISystemScope` 是全局组合根，负责构建 VContainer、持久化 UI 根节点、注入场景对象并维持唯一 EventSystem。`UIManager` 根据 `UIWindowConfig` 加载 Frame 和内容 Prefab，并负责窗口栈、动画、交互状态与资源清理。
+
+需要注入的场景对象必须显式添加 `UISceneInjectionTarget`。默认只注入标记对象本身；只有确认整个子树都由场景序列化创建时才开启 `Include Children`，避免重复注入由容器动态创建的对象。
 
 `Open()` 和 `CloseAll()` 都同步发起操作。每次 `CloseAll()` 只关闭调用当刻已有的窗口，之后新开的窗口不会被旧批次关闭；`CloseAllAsync()` 语义相同，但会等待该批窗口完成退场和清理。需要严格视觉串行时先 `await CloseAllAsync()`，再调用 `Open()`。
 
