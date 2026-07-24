@@ -1,6 +1,6 @@
 # UIManagerDemo
 
-一个面向 Unity 2022.3 LTS 的异步 UI 窗口管理示例。项目使用 uGUI、TextMeshPro、UniTask、R3 和 VContainer，实现窗口栈、分层渲染、参数与返回值、动画、Toast 及跨场景生命周期管理。
+一个面向 Unity 2022.3 LTS 的异步 UI 窗口管理框架与示例。项目使用 uGUI、TextMeshPro、UniTask 和 VContainer，实现窗口栈、分层渲染、参数与返回值、动画、Toast 及跨场景生命周期管理。框架已整理为 `Packages/com.skyxu.uisystem`，可通过 Git UPM 在其他项目复用。
 
 ## 主要特性
 
@@ -23,10 +23,9 @@
 - TextMeshPro `3.0.7`
 - Input System `1.19.0`
 - UniTask
-- R3
 - VContainer
 
-依赖已写入 `Packages/manifest.json`，Git 依赖同时固定到审核过的 commit，首次打开项目时由 Unity Package Manager 自动恢复。恢复仍需要能够访问 GitHub。
+本 Demo 的依赖已写入 `Packages/manifest.json`，Git 依赖同时固定到审核过的 commit。可复用包只需要 UniTask 和 VContainer 两项外部 Git 依赖；Input System、TextMeshPro 和 uGUI 由包清单声明。
 
 ## 快速开始
 
@@ -36,6 +35,70 @@
 4. 进入 Play Mode，通过测试台验证 Dialog、FullScreen、None 和 Toast 用例。
 
 测试场景已经加入 Build Settings。
+
+## 在其他项目安装
+
+推荐先在 Package Manager 中选择 **Add package from git URL**，只添加轻量安装器：
+
+```text
+https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem.installer#v1.0.0
+```
+
+安装后执行 `Tools > UISystem > Installer > Install Missing Packages`。确认列表后，安装器会一次性添加缺失的 UniTask、VContainer 和同版本 UISystem；已安装的同名包会跳过。安装器自身不引用这三个包，因此能在 UISystem 依赖尚未就绪时先完成编译。正式发布前联调可把 `#v1.0.0` 临时换成 `#main`。
+
+随后完成项目初始化：
+
+1. 执行 `Window > TextMeshPro > Import TMP Essential Resources`。
+2. 执行 `Tools > UISystem > Initialize Project Assets`。
+3. 将生成的 `Assets/UISystem/Prefabs/UISystemRoot.prefab` 放入启动场景一次。
+4. 执行 `Tools > UISystem > Validate Installation`。
+
+初始化菜单具有幂等性，只创建缺失的配置、Root Prefab 和业务窗口目录，不覆盖已有项目资产。三种 Frame、默认 Style、Common Toast 及其必需字体是包内核心；三种框体用例、示例窗口与场景通过 Package Manager 的 **UISystem Demo** Sample 按需导入。完整安装器、手动回退和依赖地址见 [包安装文档](Packages/com.skyxu.uisystem/README.md)。
+
+## 修改和发布 UPM 包
+
+本仓库同时是可运行的 Demo 工程和 UPM 包仓库。修改位置取决于内容归属：
+
+- 修改框架 API、窗口管理逻辑、公共 Frame、默认 Style、Common Toast、字体、初始化菜单时，直接修改 `Packages/com.skyxu.uisystem/`。这是发布给其他项目的包源码。
+- 修改当前 Demo 的注册表、示例窗口、测试场景或业务 Prefab 时，修改 `Assets/`。这些内容只影响当前 Demo，不会自动进入 UPM 核心。
+- 修改准备发布的 Sample 时，以 `Packages/com.skyxu.uisystem/Samples~/UISystemDemo/` 为最终发布内容。当前工程 `Assets` 中的 Demo 是开发工作副本，验证后需要同步到对应 Sample 路径。
+
+Demo 与 Sample 的对应关系：
+
+| Demo 工作副本 | 包内发布位置 |
+|---|---|
+| `Assets/UISystem/Examples/` | `Samples~/UISystemDemo/UISystem/Examples/` |
+| `Assets/UISystem/Config/UIWindowConfig.asset` | `Samples~/UISystemDemo/UISystem/Config/UIWindowConfig.asset` |
+| `Assets/UISystem/Prefabs/UISystemRoot.prefab` | `Samples~/UISystemDemo/UISystem/Prefabs/UISystemRoot.prefab` |
+| `Assets/UISystem/Scenes/` | `Samples~/UISystemDemo/UISystem/Scenes/` |
+| `Assets/Resources/UISystem/Windows/` | `Samples~/UISystemDemo/Resources/UISystem/Windows/` |
+
+验证当前 Demo 后，执行 `Tools > UISystem > Development > Sync Demo To Package Sample` 自动重建 `Samples~/UISystemDemo`。工具会按 `UIWindowConfig` 收集已注册的示例窗口、保留 `.meta`、排除 Runtime 中的 CommonToast，并使用临时目录替换以避免半同步状态。该菜单只在本源码仓库的 Embedded Package 中启用，不会在普通 Git 安装项目中开放。`Samples~` 不会在包开发工程中直接参与编译，因此同步前后仍应使用当前 `Assets` Demo 运行测试。
+
+发布新版本时：
+
+1. 同步修改 UISystem 与 Installer 两个 `package.json` 的 `version`。
+2. 更新两个包内的 `CHANGELOG.md`。
+3. 完成 Unity 编译、`Validate Installation` 和 PlayMode 测试。
+4. 提交并推送整个仓库，然后创建与版本一致的 Git 标签。
+
+```bash
+git add -A
+git commit -m "发布 UISystem v1.0.0"
+git push origin main
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+UPM URL 中，`?path=/Packages/com.skyxu.uisystem` 表示只安装整个仓库里的该子目录，`#v1.0.0` 表示固定到对应 Git 标签：
+
+```text
+https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem#v1.0.0
+```
+
+因此不需要为包单独创建仓库。开发联调可以临时使用 `#main`；正式项目应使用不可变的版本标签，升级时改为新的标签，不要移动旧标签。
+
+UISystem 的 `package.json` 仍不能可靠地把 Git URL 形式的 UniTask 和 VContainer 声明为传递依赖；若直接安装 UISystem，Runtime 程序集会在初始化菜单加载前就因缺少依赖而编译失败。因此推荐先安装无业务依赖的 Installer，由它在用户确认后补齐三个包。无法使用安装器时，再按包 README 的手动方式编辑 `Packages/manifest.json`。
 
 ## 基本用法
 
@@ -60,7 +123,7 @@ public sealed class ExamplePresenter
     public async UniTask<bool> ShowConfirmAsync()
     {
         return await ui.OpenForResultAsync<ConfirmParam, bool>(
-            UIWindowId.ConfirmWindow,
+            DemoWindowIds.ConfirmWindow,
             new ConfirmParam
             {
                 Title = "确认",
@@ -75,18 +138,18 @@ public sealed class ExamplePresenter
 打开无参数、无返回值窗口：
 
 ```csharp
-var handle = ui.Open(UIWindowId.SettingWindow);
+var handle = ui.Open(DemoWindowIds.SettingWindow);
 await handle.Opened; // 仅在确实需要等待开场动画时使用
 ```
 
 按窗口 ID 关闭最后打开的同 ID 实例：
 
 ```csharp
-ui.Close(UIWindowId.SettingWindow);             // 同步发起关闭
-await ui.CloseAsync(UIWindowId.SettingWindow);  // 等待退场和清理完成
+ui.Close(DemoWindowIds.SettingWindow);             // 同步发起关闭
+await ui.CloseAsync(DemoWindowIds.SettingWindow);  // 等待退场和清理完成
 
-ui.Close(UIWindowId.SettingWindow, true);             // 关闭全部同 ID 实例
-await ui.CloseAsync(UIWindowId.SettingWindow, true);  // 等待全部同 ID 实例清理完成
+ui.Close(DemoWindowIds.SettingWindow, true);             // 关闭全部同 ID 实例
+await ui.CloseAsync(DemoWindowIds.SettingWindow, true);  // 等待全部同 ID 实例清理完成
 ```
 
 显示 Toast：
@@ -114,10 +177,10 @@ var customView = Object.Instantiate(customViewPrefab, debugLayer, false);
 
 ## 添加新窗口
 
-1. 在 `UIWindowId` 中增加唯一 ID。
+1. 在业务项目中声明唯一的 `static readonly UIWindowId`，不修改包源码。
 2. 创建继承 `UIWindow` 或 `UIWindow<TParam, TResult>` 的窗口脚本。
 3. 创建内容 Prefab，并放入 `Assets/Resources/UISystem/Windows/`。
-4. 按需创建或复用 `UIWindowStyle`。
+4. 按需复用包内默认 `UIWindowStyle`，或在项目中创建自己的 Style。
 5. 在 `Assets/UISystem/Config/UIWindowConfig.asset` 中注册窗口 ID、Prefab、样式、实例策略、默认层级和遮挡策略。
 6. 通过 `IUIManager.Open` 打开窗口；需要等待返回值时使用 `OpenForResultAsync`。
 
@@ -126,17 +189,16 @@ var customView = Object.Instantiate(customViewPrefab, debugLayer, false);
 ## 目录结构
 
 ```text
+Packages/com.skyxu.uisystem/
+├── Runtime/                       核心代码、三种 Frame、默认 Style 与 Toast
+├── Editor/                        初始化、安装校验和 Inspector 支持
+└── Samples~/UISystemDemo/         可选示例窗口与场景
+
 Assets/
-├── Fonts/                         TMP 中文字体资源
-├── Resources/UISystem/
-│   ├── Frames/                    公共窗口框架 Prefab
-│   └── Windows/                   窗口内容 Prefab
+├── Resources/UISystem/Windows/    项目业务窗口 Prefab
 └── UISystem/
-    ├── Config/                    窗口注册表与样式配置
-    ├── Examples/                  示例窗口和测试入口
-    ├── Prefabs/UISystemRoot.prefab
-    ├── Runtime/                   UI 系统核心代码
-    └── Scenes/UIWindowTestCases.unity
+    ├── Config/UIWindowConfig.asset
+    └── Prefabs/UISystemRoot.prefab
 ```
 
 ## 设计说明

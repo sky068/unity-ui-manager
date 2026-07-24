@@ -1,8 +1,8 @@
 {
   "dependencies": {
-    "com.cysharp.r3": "https://github.com/Cysharp/R3.git?path=src/R3.Unity/Assets/R3.Unity#dc69078430149db8cd93069f502cefe148745b4b",
+    "com.skyxu.uisystem": "file:com.skyxu.uisystem",
+    "com.skyxu.uisystem.installer": "file:com.skyxu.uisystem.installer",
     "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask#a9e27c03d411d2fca01cc7410c24c97cd77cb539",
-    "com.github-glitchenzo.nugetforunity": "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity#c2af83c9d4f8cdaada9d4a0e94de2f195d8e1d01",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.2d.spriteshape": "9.1.1",
     "com.unity.ide.rider": "3.0.39",

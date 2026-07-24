@@ -1,5 +1,6 @@
 using System.Collections;
 using Cysharp.Threading.Tasks;
+using Game.UISystem.Example;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -20,8 +21,8 @@ namespace Game.UISystem.Tests
             Assert.That(ui, Is.Not.Null);
             ui.CloseAllImmediately();
 
-            var first = ui.Open(UIWindowId.SettingWindow);
-            var second = ui.Open(UIWindowId.SettingWindow);
+            var first = ui.Open(DemoWindowIds.SettingWindow);
+            var second = ui.Open(DemoWindowIds.SettingWindow);
 
             Assert.That(second, Is.SameAs(first));
             Assert.That(ui.OpenCount, Is.EqualTo(1));

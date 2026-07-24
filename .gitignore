@@ -51,3 +51,10 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# UPM reserves trailing-tilde folders for package samples and documentation.
+# Keep them in version control even when a global editor-backup rule ignores *~.
+!Packages/com.skyxu.uisystem/Samples~/
+!Packages/com.skyxu.uisystem/Samples~/**
+!Packages/com.skyxu.uisystem/Documentation~/
+!Packages/com.skyxu.uisystem/Documentation~/**

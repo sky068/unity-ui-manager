@@ -1,0 +1,128 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e695ce446c114d8f8bdd262da1dc9a4, type: 3}
+  m_Name: UIWindowConfig
+  m_EditorClassIdentifier:
+  entries:
+  - windowId:
+      value: ConfirmWindow
+    contentPrefabAddress: ConfirmWindow
+    style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
+    defaultLayer: 200
+    openMode: 0
+    occlusionMode: 0
+    showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 1
+    closeOnEsc: 1
+  - windowId:
+      value: SettingWindow
+    contentPrefabAddress: SettingsWindow
+    style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
+    defaultLayer: 200
+    openMode: 1
+    occlusionMode: 2
+    allowFullOcclusion: 1
+    showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
+  - windowId:
+      value: TipsWindow
+    contentPrefabAddress: TipsWindow
+    style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
+    defaultLayer: 200
+    openMode: 0
+    occlusionMode: 0
+    showMask: 0
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
+  - windowId:
+      value: FullScreenInfoTest
+    contentPrefabAddress: FullScreenInfoTest
+    style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
+    defaultLayer: 200
+    openMode: 0
+    occlusionMode: 2
+    allowFullOcclusion: 1
+    showMask: 0
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
+  - windowId:
+      value: FullScreenListTest
+    contentPrefabAddress: FullScreenListTest
+    style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
+    defaultLayer: 200
+    openMode: 0
+    occlusionMode: 2
+    allowFullOcclusion: 1
+    showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
+  - windowId:
+      value: DialogCompactTest
+    contentPrefabAddress: DialogCompactTest
+    style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
+    defaultLayer: 200
+    openMode: 0
+    occlusionMode: 0
+    showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 1
+    closeOnEsc: 1
+  - windowId:
+      value: DialogContentTest
+    contentPrefabAddress: DialogContentTest
+    style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
+    defaultLayer: 200
+    openMode: 0
+    occlusionMode: 1
+    showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 1
+    closeOnEsc: 1
+  - windowId:
+      value: NoneToastTest
+    contentPrefabAddress: NoneToastTest
+    style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
+    defaultLayer: 200
+    openMode: 0
+    occlusionMode: 0
+    showMask: 0
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
+  - windowId:
+      value: NoneLoadingTest
+    contentPrefabAddress: NoneLoadingTest
+    style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
+    defaultLayer: 200
+    openMode: 0
+    occlusionMode: 0
+    showMask: 0
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
+  - windowId:
+      value: CommonToast
+    contentPrefabAddress: CommonToast
+    style: {fileID: 11400000, guid: a83fd5e112aa4f73b271df85c8f7d940, type: 2}
+    defaultLayer: 400
+    openMode: 0
+    occlusionMode: 0
+    showMask: 0
+    blockInput: 0
+    closeOnOutsideClick: 0
+    closeOnEsc: 0

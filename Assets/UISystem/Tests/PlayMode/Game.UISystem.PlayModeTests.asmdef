@@ -4,7 +4,6 @@
     "Game.UISystem.Runtime",
     "Game.UISystem.Examples",
     "UniTask",
-    "R3.Unity",
     "UnityEngine.UI"
   ],
   "optionalUnityReferences": [
@@ -14,7 +13,6 @@
   "excludePlatforms": [],
   "overrideReferences": true,
   "precompiledReferences": [
-    "R3.dll",
     "nunit.framework.dll"
   ],
   "autoReferenced": false,

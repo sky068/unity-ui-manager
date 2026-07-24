@@ -1,0 +1,8 @@
+{
+  "name": "Game.UISystem.Installer.Editor",
+  "rootNamespace": "Game.UISystem.Installer",
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}

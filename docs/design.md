@@ -2,35 +2,50 @@
 
 ## 1. Demo 目标
 
-这个工程中的 UISystem Demo 使用普通 Unity 资源展示窗口的创建、注册、打开、返回结果和关闭流程，不依赖任何资源生成器。
+这个工程中的 UISystem Demo 展示窗口的创建、注册、打开、返回结果和关闭流程。框架核心位于本地 UPM 包 `Packages/com.skyxu.uisystem`；项目配置和 Demo 资源保留在 `Assets`。
 
 核心依赖：
 
 - **UniTask**：等待窗口打开、返回结果和关闭动画。
 - **VContainer**：实例化窗口内容并支持依赖注入。
-- **R3**：用 `Unit` 表示无参数或无返回值。
+- **UIUnit**：框架内置的无参数或无返回值类型，不再为此引入 R3。
 
 可以直接打开 `Assets/UISystem/Scenes/UIWindowTestCases.unity` 运行。场景中的按钮分别展示已经注册的 Dialog、FullScreen、None 窗口和 Common Toast。
 
 ## 2. 资源结构
 
 ```text
+Packages/com.skyxu.uisystem/
+├── Runtime/Core/                 # UIManager、UIWindow 等核心代码
+├── Runtime/Resources/UISystem/   # 三种 Frame 与 Common Toast
+├── Runtime/Defaults/             # 默认 Style 和初始化配置模板
+├── Editor/                       # 初始化与安装校验菜单
+└── Samples~/UISystemDemo/        # 可选 Demo Sample
+
 Assets/
 ├── UISystem/
-│   ├── Runtime/                  # UIManager、UIWindow 等核心代码
-│   ├── Examples/                 # 示例窗口与 Demo 场景 Presenter
-│   ├── Config/                   # 注册表和窗口 Style
-│   ├── Art/Sprites/              # UI 图片资源
-│   ├── Prefabs/
-│   │   └── UISystemRoot.prefab   # 持久化主 Canvas、分层节点和 EventSystem
-│   └── Scenes/
-│       └── UIWindowTestCases.unity
-└── Resources/UISystem/
-    ├── Frames/                   # 公共窗口底框 Prefab
-    └── Windows/                  # 业务窗口内容 Prefab
+│   ├── Examples/                 # 当前 Demo 已导入的示例代码
+│   ├── Config/                   # 项目自己的注册表
+│   ├── Prefabs/UISystemRoot.prefab
+│   └── Scenes/UIWindowTestCases.unity
+└── Resources/UISystem/Windows/   # 项目业务窗口内容 Prefab
 ```
 
-所有内容 Prefab 和注册配置都是可直接编辑、提交版本控制的普通资源。
+三种基础 Frame、默认 Style 和 Common Toast 属于只读包核心。业务窗口 Prefab、注册配置和初始化生成的 Root Prefab 都位于项目 `Assets`，可直接编辑并提交版本控制。
+
+### 其他项目安装
+
+推荐通过 Package Manager 的 Git URL 先安装无业务依赖的 Installer：
+
+```text
+https://github.com/sky068/unity-ui-manager.git?path=/Packages/com.skyxu.uisystem.installer#v1.0.0
+```
+
+执行 `Tools > UISystem > Installer > Install Missing Packages` 并确认后，安装器会批量补齐 UniTask、VContainer 和同版本 UISystem，跳过已经注册的包。再依次执行 `Window > TextMeshPro > Import TMP Essential Resources`、`Tools > UISystem > Initialize Project Assets` 和 `Tools > UISystem > Validate Installation`。初始化菜单只补齐缺失的配置、Root Prefab 和 `Resources/UISystem/Windows` 目录，不覆盖已有文件。需要参考实现时，从 Package Manager 按需导入 **UISystem Demo** Sample。正式发布使用固定标签；标签尚未创建的开发阶段可临时使用 `#main`。安装器不可用时，按包 README 手动把三个 Git URL 写入目标项目的 `Packages/manifest.json`。
+
+### 包开发边界
+
+框架代码、公共资源和 Editor 工具直接修改 `Packages/com.skyxu.uisystem`；`Assets` 下的注册表、业务窗口和场景属于当前 Demo。准备发布的示例以 `Packages/com.skyxu.uisystem/Samples~/UISystemDemo` 为准，验证 Demo 后通过 `Tools > UISystem > Development > Sync Demo To Package Sample` 安全同步。完整的目录映射、`?path=` URL 语义、依赖限制和 Git 标签发布流程见根目录 `README.md` 的“修改和发布 UPM 包”。
 
 ### 场景接入
 
@@ -110,7 +125,7 @@ UISystemScope.Instance.InjectGameObject(instance);
 `SettingsWindow` 继承 `UIWindow`：
 
 ```csharp
-var handle = _uiManager.Open(UIWindowId.SettingWindow);
+var handle = _uiManager.Open(DemoWindowIds.SettingWindow);
 await handle.Closed; // 仅在调用方需要等待完全关闭时使用
 ```
 
@@ -123,7 +138,7 @@ await handle.Closed; // 仅在调用方需要等待完全关闭时使用
 ```csharp
 bool confirmed = await _uiManager
     .OpenForResultAsync<ConfirmParam, bool>(
-        UIWindowId.ConfirmWindow,
+        DemoWindowIds.ConfirmWindow,
         new ConfirmParam
         {
             Title = "删除确认",
@@ -141,15 +156,15 @@ bool confirmed = await _uiManager
 同一 ID 同时存在多个实例时，两者都以最后打开且仍处于活动生命周期的实例为目标：
 
 ```csharp
-_uiManager.Close(UIWindowId.ConfirmWindow);
-await _uiManager.CloseAsync(UIWindowId.ConfirmWindow);
+_uiManager.Close(DemoWindowIds.ConfirmWindow);
+await _uiManager.CloseAsync(DemoWindowIds.ConfirmWindow);
 ```
 
 传入 `true` 可关闭调用时已存在的全部同 ID 实例：
 
 ```csharp
-_uiManager.Close(UIWindowId.ConfirmWindow, true);
-await _uiManager.CloseAsync(UIWindowId.ConfirmWindow, true);
+_uiManager.Close(DemoWindowIds.ConfirmWindow, true);
+await _uiManager.CloseAsync(DemoWindowIds.ConfirmWindow, true);
 ```
 
 ### 窗口实例策略
@@ -197,13 +212,13 @@ Common Toast 使用独立的 `StyleToast`，不影响其他 None Frame 窗口的
 
 ### 第一步：声明窗口 ID
 
-在 `UIWindowId.cs` 中添加唯一枚举值：
+在业务程序集声明 ID 常量，不要修改 UPM 包源码：
 
 ```csharp
-public enum UIWindowId
+public static class GameWindowIds
 {
-    // 已有窗口……
-    RewardWindow = 40
+    public static readonly UIWindowId RewardWindow =
+        new UIWindowId("RewardWindow");
 }
 ```
 
@@ -252,7 +267,7 @@ Assets/Resources/UISystem/Windows/RewardWindow.prefab
 - 根节点挂载 `RewardWindow`。
 - 在 Inspector 中绑定所有序列化字段。
 - Dialog 内容可用根节点 `LayoutElement.preferredWidth/Height` 控制窗口尺寸。
-- Prefab 文件名建议与窗口类名、枚举名保持一致。
+- Prefab 文件名建议与窗口类名、窗口 ID 值保持一致。
 
 ### 第四步：注册窗口
 
@@ -280,7 +295,7 @@ Style 决定公共 Frame、遮罩颜色和动画；窗口条目决定是否显�
 ```csharp
 bool received = await _uiManager
     .OpenForResultAsync<RewardParam, bool>(
-        UIWindowId.RewardWindow,
+        GameWindowIds.RewardWindow,
         new RewardParam { Gold = 100 });
 ```
 
@@ -334,7 +349,7 @@ Resources/UISystem/Windows/{entry.contentPrefabAddress}
 |---|---|---|---|
 | 删除确认 | `ConfirmWindow` | Dialog | 参数输入与 `bool` 返回值 |
 | 设置页 | `SettingsWindow` | FullScreen | 无参数、无返回值窗口 |
-| 新手提示 | `TipsWindow` | None | 参数输入与 `Unit` 返回值 |
+| 新手提示 | `TipsWindow` | None | 参数输入与 `UIUnit` 返回值 |
 | 紧凑/长内容 | `FrameTestWindow` | Dialog | 内容尺寸驱动 Frame |
 | 信息/列表页 | `FrameTestWindow` | FullScreen | 全屏内容布局 |
 | Toast/Loading | `FrameTestWindow` | None | 无框轻量窗口 |

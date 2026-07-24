@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: UIWindowConfig
   m_EditorClassIdentifier: 
   entries:
-  - windowId: 1
+  - windowId:
+      value: ConfirmWindow
     contentPrefabAddress: ConfirmWindow
     style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
     defaultLayer: 200
@@ -23,7 +24,8 @@ MonoBehaviour:
     blockInput: 1
     closeOnOutsideClick: 1
     closeOnEsc: 1
-  - windowId: 2
+  - windowId:
+      value: SettingWindow
     contentPrefabAddress: SettingsWindow
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
     defaultLayer: 200
@@ -34,7 +36,8 @@ MonoBehaviour:
     blockInput: 1
     closeOnOutsideClick: 0
     closeOnEsc: 1
-  - windowId: 3
+  - windowId:
+      value: TipsWindow
     contentPrefabAddress: TipsWindow
     style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
     defaultLayer: 200
@@ -44,7 +47,8 @@ MonoBehaviour:
     blockInput: 1
     closeOnOutsideClick: 0
     closeOnEsc: 1
-  - windowId: 10
+  - windowId:
+      value: FullScreenInfoTest
     contentPrefabAddress: FullScreenInfoTest
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
     defaultLayer: 200
@@ -55,7 +59,8 @@ MonoBehaviour:
     blockInput: 1
     closeOnOutsideClick: 0
     closeOnEsc: 1
-  - windowId: 11
+  - windowId:
+      value: FullScreenListTest
     contentPrefabAddress: FullScreenListTest
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
     defaultLayer: 200
@@ -66,7 +71,8 @@ MonoBehaviour:
     blockInput: 1
     closeOnOutsideClick: 0
     closeOnEsc: 1
-  - windowId: 20
+  - windowId:
+      value: DialogCompactTest
     contentPrefabAddress: DialogCompactTest
     style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
     defaultLayer: 200
@@ -76,7 +82,8 @@ MonoBehaviour:
     blockInput: 1
     closeOnOutsideClick: 1
     closeOnEsc: 1
-  - windowId: 21
+  - windowId:
+      value: DialogContentTest
     contentPrefabAddress: DialogContentTest
     style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
     defaultLayer: 200
@@ -86,7 +93,8 @@ MonoBehaviour:
     blockInput: 1
     closeOnOutsideClick: 1
     closeOnEsc: 1
-  - windowId: 30
+  - windowId:
+      value: NoneToastTest
     contentPrefabAddress: NoneToastTest
     style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
     defaultLayer: 200
@@ -96,7 +104,8 @@ MonoBehaviour:
     blockInput: 1
     closeOnOutsideClick: 0
     closeOnEsc: 1
-  - windowId: 31
+  - windowId:
+      value: NoneLoadingTest
     contentPrefabAddress: NoneLoadingTest
     style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
     defaultLayer: 200
@@ -106,7 +115,8 @@ MonoBehaviour:
     blockInput: 1
     closeOnOutsideClick: 0
     closeOnEsc: 1
-  - windowId: 32
+  - windowId:
+      value: CommonToast
     contentPrefabAddress: CommonToast
     style: {fileID: 11400000, guid: a83fd5e112aa4f73b271df85c8f7d940, type: 2}
     defaultLayer: 400

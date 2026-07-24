@@ -1,0 +1,22 @@
+{
+  "name": "com.skyxu.uisystem",
+  "version": "1.0.0",
+  "displayName": "Skyxu UI System",
+  "description": "Async uGUI window stack with UniTask and VContainer integration.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.unity.inputsystem": "1.7.0",
+    "com.unity.textmeshpro": "3.0.7",
+    "com.unity.ugui": "1.0.0"
+  },
+  "samples": [
+    {
+      "displayName": "UISystem Demo",
+      "description": "Three frame types, example windows and a runnable test scene.",
+      "path": "Samples~/UISystemDemo"
+    }
+  ],
+  "author": {
+    "name": "skyxu"
+  }
+}

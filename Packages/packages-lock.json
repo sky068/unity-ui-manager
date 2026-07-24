@@ -1,14 +1,5 @@
 {
   "dependencies": {
-    "com.cysharp.r3": {
-      "version": "https://github.com/Cysharp/R3.git?path=src/R3.Unity/Assets/R3.Unity#dc69078430149db8cd93069f502cefe148745b4b",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {
-        "com.unity.modules.imgui": "1.0.0"
-      },
-      "hash": "dc69078430149db8cd93069f502cefe148745b4b"
-    },
     "com.cysharp.unitask": {
       "version": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask#a9e27c03d411d2fca01cc7410c24c97cd77cb539",
       "depth": 0,
@@ -16,12 +7,21 @@
       "dependencies": {},
       "hash": "a9e27c03d411d2fca01cc7410c24c97cd77cb539"
     },
-    "com.github-glitchenzo.nugetforunity": {
-      "version": "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity#c2af83c9d4f8cdaada9d4a0e94de2f195d8e1d01",
+    "com.skyxu.uisystem": {
+      "version": "file:com.skyxu.uisystem",
       "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "c2af83c9d4f8cdaada9d4a0e94de2f195d8e1d01"
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.inputsystem": "1.7.0",
+        "com.unity.textmeshpro": "3.0.7",
+        "com.unity.ugui": "1.0.0"
+      }
+    },
+    "com.skyxu.uisystem.installer": {
+      "version": "file:com.skyxu.uisystem.installer",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
     },
     "com.unity.2d.common": {
       "version": "8.1.1",
