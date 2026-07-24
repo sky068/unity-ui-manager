@@ -137,7 +137,7 @@ bool confirmed = await _uiManager
 
 ### 无公共底框窗口
 
-`TipsWindow`、`NoneToastTest` 和 `NoneLoadingTest` 使用 `StyleNone`。它们仍由 UIManager 管理生命周期和窗口栈，但视觉背景、按钮和尺寸全部由内容 Prefab 自己提供。
+`TipsWindow`、`NoneToastTest` 和 `NoneLoadingTest` 使用 `StyleNone`。它们仍由 UIManager 管理生命周期和窗口栈，但视觉背景、按钮和尺寸全部由内容 Prefab 自己提供。这些窗口在 `UIWindowConfig` 中配置为不显示遮罩但屏蔽全屏输入，避免触摸穿透到下层界面；Common Toast 则不显示遮罩也不屏蔽输入。
 
 ### Common Toast
 
@@ -238,7 +238,7 @@ Style: StyleDialog
 Default Layer: Popup
 ```
 
-Style 决定公共 Frame、遮罩、动画和 ESC 行为；Layer 决定窗口挂到主 Canvas 下的哪个分层节点。
+Style 决定公共 Frame、遮罩颜色和动画；窗口条目决定是否显示遮罩、是否屏蔽输入、外部点击及 ESC 行为；Layer 决定窗口挂到主 Canvas 下的哪个分层节点。
 运行时会按 `UILayer` 枚举值自动校正各 Layer 根节点的 sibling 顺序，数值越大的 Layer 显示越靠上。
 
 常用 Layer：
@@ -293,7 +293,7 @@ Resources/UISystem/Windows/{entry.contentPrefabAddress}
 5. 根据内容首选尺寸布局 Frame。
 6. 将窗口压入栈并播放入场动画。
 7. 动画结束后调用 `OnOpened`。
-8. 等待 `Close()`、`Complete(result)`、ESC、遮罩或 Frame 关闭按钮。
+8. 等待 `Close()`、`Complete(result)`、ESC、外部点击或 Frame 关闭按钮。
 9. 调用 `OnClosing` 并播放退场动画。
 10. 销毁窗口并恢复下一栈顶窗口的交互。
 

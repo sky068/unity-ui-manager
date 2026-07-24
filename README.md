@@ -130,7 +130,7 @@ Assets/
 
 `UISystemScope` 是全局组合根，负责构建 VContainer、持久化 UI 根节点、注入场景对象并维持唯一 EventSystem。`UIManager` 根据 `UIWindowConfig` 加载 Frame 和内容 Prefab，并负责窗口栈、动画、交互状态与资源清理。
 
-每个窗口可独立配置 `showMask` 和 `occlusionMode`。`showMask` 关闭时不为该窗口创建背景遮罩；对应 Style 的 `showMask` 仍作为全局能力开关和外观配置。普通 Dialog 默认使用 `KeepVisible`；确认存在完整不透明区域的大 Dialog 可使用 `HideFullyCovered`；`HideAllBelow` 仅允许用于 FullScreen，并且必须同时开启 `allowFullOcclusion` 明确确认窗口完全不透明。裁剪通过 `CanvasRenderer.cull` 完成，不会触发下层对象的 `OnDisable/OnEnable`。Frame 被裁剪时它自己的 Mask 会同时裁剪；多层窗口采用单一 Mask 所有者，新旧 Mask 交接会继承完整 RGBA 并插值到目标颜色，避免遮罩叠加、跳色和闪烁。系统仅在开场动画结束后裁剪 Frame，并在退场动画开始前恢复；每次栈变化都会从栈顶重新计算，异常关闭或非栈顶关闭也不会遗留错误状态。
+`UIWindowStyle` 只负责 Frame、遮罩颜色和动画等外观；每个 `UIWindowConfig` 条目独立配置 `showMask`、`blockInput`、`closeOnOutsideClick` 和 `closeOnEsc`。因此单个窗口可以在不显示遮罩时阻止点击穿透，不需要与 Style 进行布尔值合并。普通 Dialog 默认使用 `KeepVisible`；确认存在完整不透明区域的大 Dialog 可使用 `HideFullyCovered`；`HideAllBelow` 仅允许用于 FullScreen，并且必须同时开启 `allowFullOcclusion` 明确确认窗口完全不透明。裁剪通过 `CanvasRenderer.cull` 完成，不会触发下层对象的 `OnDisable/OnEnable`。Frame 被裁剪时它自己的 Mask 会同时裁剪；多层窗口采用单一 Mask 所有者，新旧 Mask 交接会继承完整 RGBA 并插值到目标颜色，避免遮罩叠加、跳色和闪烁。系统仅在开场动画结束后裁剪 Frame，并在退场动画开始前恢复；每次栈变化都会从栈顶重新计算，异常关闭或非栈顶关闭也不会遗留错误状态。
 
 `HideFullyCovered` 只依据 Frame 中显式配置的 `OcclusionRect` 判断，透明圆角和阴影不计入不透明区域；未配置该区域时会保守地保持下层可见。测试场景中直接配置了“大窗口覆盖小窗口”“小窗口覆盖大窗口”“全屏覆盖 Dialog”和无 Mask 信息页入口。点击覆盖用例时只打开一级窗口 A；通过 A 内的按钮手动打开二级窗口 B，便于逐帧观察覆盖关系，并可在关闭 B 后重复测试。
 

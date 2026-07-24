@@ -19,6 +19,9 @@ MonoBehaviour:
     defaultLayer: 200
     occlusionMode: 0
     showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 1
+    closeOnEsc: 1
   - windowId: 2
     contentPrefabAddress: SettingsWindow
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
@@ -26,12 +29,18 @@ MonoBehaviour:
     occlusionMode: 2
     allowFullOcclusion: 1
     showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
   - windowId: 3
     contentPrefabAddress: TipsWindow
     style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
     defaultLayer: 200
     occlusionMode: 0
     showMask: 0
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
   - windowId: 10
     contentPrefabAddress: FullScreenInfoTest
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
@@ -39,6 +48,9 @@ MonoBehaviour:
     occlusionMode: 2
     allowFullOcclusion: 1
     showMask: 0
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
   - windowId: 11
     contentPrefabAddress: FullScreenListTest
     style: {fileID: 11400000, guid: cf2a030b76871437db3ca6ac8c9fa380, type: 2}
@@ -46,33 +58,51 @@ MonoBehaviour:
     occlusionMode: 2
     allowFullOcclusion: 1
     showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
   - windowId: 20
     contentPrefabAddress: DialogCompactTest
     style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
     defaultLayer: 200
     occlusionMode: 0
     showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 1
+    closeOnEsc: 1
   - windowId: 21
     contentPrefabAddress: DialogContentTest
     style: {fileID: 11400000, guid: 5d15f873dae204622bbcde2a04770398, type: 2}
     defaultLayer: 200
     occlusionMode: 1
     showMask: 1
+    blockInput: 1
+    closeOnOutsideClick: 1
+    closeOnEsc: 1
   - windowId: 30
     contentPrefabAddress: NoneToastTest
     style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
     defaultLayer: 200
     occlusionMode: 0
     showMask: 0
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
   - windowId: 31
     contentPrefabAddress: NoneLoadingTest
     style: {fileID: 11400000, guid: dc040f67908164f4a8e04dfbc930d270, type: 2}
     defaultLayer: 200
     occlusionMode: 0
     showMask: 0
+    blockInput: 1
+    closeOnOutsideClick: 0
+    closeOnEsc: 1
   - windowId: 32
     contentPrefabAddress: CommonToast
     style: {fileID: 11400000, guid: a83fd5e112aa4f73b271df85c8f7d940, type: 2}
     defaultLayer: 400
     occlusionMode: 0
     showMask: 0
+    blockInput: 0
+    closeOnOutsideClick: 0
+    closeOnEsc: 0

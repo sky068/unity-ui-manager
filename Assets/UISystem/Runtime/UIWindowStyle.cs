@@ -32,10 +32,10 @@ namespace Game.UISystem
         [Header("窗口框架")]
         public UIFrameType frameType = UIFrameType.Dialog;
 
-        [Header("背景遮罩")]
-        public bool  showMask        = true;
-        public Color maskColor       = new Color(0f, 0f, 0f, 0.65f);
-        public bool  closeOnMaskClick = false;
+        /// <summary>使用该 Style 的窗口显示遮罩时采用的颜色与透明度。</summary>
+        [Header("遮罩外观")]
+        [Tooltip("窗口开启 Show Mask 时使用的遮罩颜色与透明度。是否显示遮罩由 UIWindowConfig 的单窗口条目决定。")]
+        public Color maskColor = new Color(0f, 0f, 0f, 0.65f);
 
         [Header("动画")]
         public WindowAnimationType animationType = WindowAnimationType.FadeAndScale;
@@ -53,7 +53,5 @@ namespace Game.UISystem
         [Tooltip("ToastSlide 动画的纵向移动距离")]
         public float slideDistance = 80f;
 
-        [Header("交互")]
-        public bool closeOnEsc = true;
     }
 }

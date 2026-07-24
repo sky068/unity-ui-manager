@@ -14,11 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   framePrefabAddress: UIFrameNone
   frameType: 2
-  showMask: 0
   maskColor: {r: 0, g: 0, b: 0, a: 0.65}
-  closeOnMaskClick: 0
   animationType: 2
   openDuration: 0.22
   closeDuration: 0.15
   scaleFrom: 0.88
-  closeOnEsc: 1

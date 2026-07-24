@@ -36,8 +36,18 @@ namespace Game.UISystem
         [Tooltip("确认该 FullScreen 窗口完全不透明，允许 HideAllBelow。透明或不确定时必须关闭")]
         public bool allowFullOcclusion;
 
-        [Tooltip("是否为该窗口创建背景遮罩；仍需对应 Style 开启遮罩支持")]
+        [Header("窗口交互")]
+        [Tooltip("是否显示全屏背景遮罩。只影响视觉效果，遮罩颜色由 Style 决定")]
         public bool showMask = true;
+
+        [Tooltip("是否创建透明全屏输入屏蔽层，阻止触摸或点击穿透到下层界面")]
+        public bool blockInput = true;
+
+        [Tooltip("点击窗口外的透明输入屏蔽层时是否关闭窗口；仅在 Block Input 开启时生效")]
+        public bool closeOnOutsideClick;
+
+        [Tooltip("按下 ESC 或设备返回键时是否关闭该窗口")]
+        public bool closeOnEsc = true;
     }
 
     /// <summary>

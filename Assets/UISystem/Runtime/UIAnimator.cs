@@ -21,19 +21,15 @@ namespace Game.UISystem
 
         public static GameObject CreateMask(
             Transform parent,
-            UIWindowStyle style,
-            System.Action onMaskClick,
             Color initialColor)
         {
-            return CreateMaskWithColor(parent, initialColor,
-                style.closeOnMaskClick ? onMaskClick : null);
+            return CreateMaskWithColor(parent, initialColor);
         }
 
         /// <summary>用指定初始颜色创建遮罩；后续动画从该颜色的 alpha 开始。</summary>
         public static GameObject CreateMaskWithColor(
             Transform parent,
-            Color targetColor,
-            System.Action onMaskClick)
+            Color targetColor)
         {
             var go = new GameObject("__Mask__");
             go.transform.SetParent(parent, false);
@@ -46,13 +42,35 @@ namespace Game.UISystem
 
             var img   = go.AddComponent<Image>();
             img.color = targetColor;
+            img.raycastTarget = false;
             go.AddComponent<UIMaskTransitionState>();
 
-            if (onMaskClick != null)
+            return go;
+        }
+
+        /// <summary>创建不参与渲染表现的全屏输入屏蔽层。</summary>
+        public static GameObject CreateInputBlocker(
+            Transform parent,
+            System.Action onOutsideClick)
+        {
+            var go = new GameObject("__InputBlocker__");
+            go.transform.SetParent(parent, false);
+
+            var rt       = go.AddComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            var img = go.AddComponent<Image>();
+            img.color = Color.clear;
+            img.raycastTarget = true;
+
+            if (onOutsideClick != null)
             {
                 var btn        = go.AddComponent<Button>();
                 btn.transition = Selectable.Transition.None;
-                btn.onClick.AddListener(() => onMaskClick());
+                btn.onClick.AddListener(() => onOutsideClick());
             }
 
             return go;

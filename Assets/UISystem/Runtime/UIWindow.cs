@@ -39,7 +39,7 @@ namespace Game.UISystem
 
         // 同一个完成源同时承担“向调用方返回结果”和“通知 UIManager 开始关闭”的职责。
         private UniTaskCompletionSource<TResult> _tcs;
-        private UIWindowStyle _style;
+        private bool _closeOnEsc;
         private Func<bool> _isTop;
         private Action _onCloseRequested;
         private bool _closeRequested;
@@ -51,7 +51,7 @@ namespace Game.UISystem
             TParam param,
             UniTaskCompletionSource<TResult> tcs,
             UIWindowFrame frame,
-            UIWindowStyle style,
+            bool closeOnEsc,
             Func<bool> isTop,
             Action onCloseRequested)
         {
@@ -59,7 +59,7 @@ namespace Game.UISystem
             // Complete 也能正确完成结果并取消仍未开始/完成的开场动画。
             Frame  = frame;
             _tcs   = tcs;
-            _style = style;
+            _closeOnEsc = closeOnEsc;
             _isTop = isTop;
             _onCloseRequested = onCloseRequested;
 
@@ -101,7 +101,7 @@ namespace Game.UISystem
         private void Update()
         {
             if (!_closeRequested && !_isClosing &&
-                _style != null && _style.closeOnEsc &&
+                _closeOnEsc &&
                 (_isTop?.Invoke() ?? false) &&
                 Keyboard.current?.escapeKey.wasPressedThisFrame == true)
             {

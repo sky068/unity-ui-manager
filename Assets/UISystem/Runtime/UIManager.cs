@@ -81,6 +81,7 @@ namespace Game.UISystem
         public readonly UIWindowFrame Frame;
         public readonly GameObject FrameGo;
         public readonly GameObject MaskGo;
+        public readonly GameObject InputBlockerGo;
         public readonly CanvasGroup CanvasGroup;
         public readonly UIWindowStyle Style;
         public readonly UILayer Layer;
@@ -98,6 +99,7 @@ namespace Game.UISystem
             UIWindowFrame frame,
             GameObject frameGo,
             GameObject maskGo,
+            GameObject inputBlockerGo,
             CanvasGroup canvasGroup,
             UIWindowStyle style,
             UILayer layer,
@@ -108,6 +110,7 @@ namespace Game.UISystem
             Frame = frame;
             FrameGo = frameGo;
             MaskGo = maskGo;
+            InputBlockerGo = inputBlockerGo;
             CanvasGroup = canvasGroup;
             Style = style;
             Layer = layer;
@@ -143,18 +146,22 @@ namespace Game.UISystem
                 CanvasGroup.blocksRaycasts = isActiveTop && OpenAnimationComplete;
             }
 
-            if (MaskGo != null && MaskGo.TryGetComponent<Image>(out var image))
+            if (InputBlockerGo != null &&
+                InputBlockerGo.TryGetComponent<Image>(out var image))
                 image.raycastTarget = isActiveTop;
-            if (MaskGo != null && MaskGo.TryGetComponent<Button>(out var button))
-                button.interactable = isActiveTop;
+            if (InputBlockerGo != null &&
+                InputBlockerGo.TryGetComponent<Button>(out var button))
+                button.interactable = isActiveTop && OpenAnimationComplete;
         }
 
-        public void ApplyMaskTransitionBlocker()
+        public void ApplyInputTransitionBlocker()
         {
-            // 退场交接期间遮罩仍应吞掉点击，但不能把这次点击解释为关闭下层窗口。
-            if (MaskGo != null && MaskGo.TryGetComponent<Image>(out var image))
+            // 退场交接期间继续吞掉点击，但不能把这次点击解释为关闭窗口。
+            if (InputBlockerGo != null &&
+                InputBlockerGo.TryGetComponent<Image>(out var image))
                 image.raycastTarget = true;
-            if (MaskGo != null && MaskGo.TryGetComponent<Button>(out var button))
+            if (InputBlockerGo != null &&
+                InputBlockerGo.TryGetComponent<Button>(out var button))
                 button.interactable = false;
         }
 
@@ -307,6 +314,7 @@ namespace Game.UISystem
 
             GameObject frameGo = null;
             GameObject maskGo = null;
+            GameObject inputBlockerGo = null;
             StackEntry stackEntry = null;
             CancellationTokenSource openAnimationCancellation = null;
 
@@ -338,18 +346,27 @@ namespace Game.UISystem
                         $"[UIManager] Content '{config.contentPrefabAddress}' 缺少 {typeof(TWindow).Name}");
 
                 var resultSource = new UniTaskCompletionSource<TResult>();
-                // Style 定义遮罩外观和能力，窗口条目决定本实例是否实际创建遮罩。
-                if (style.showMask && config.showMask)
+                // 遮罩只负责视觉表现，不参与射线；是否显示由单窗口条目决定。
+                if (config.showMask)
                 {
                     // 继承当前唯一可见 Mask 的完整 RGBA；新窗口接管后再插值到自身目标色，
                     // 避免不同 Style 之间切换时发生一帧跳色或透明度突变。
                     Color initialMaskColor = GetVisibleMaskColor(style.maskColor);
                     maskGo = UIAnimator.CreateMask(
                         layerRoot,
-                        style,
-                        () => window.TryRequestClose(),
                         initialMaskColor);
                     maskGo.transform.SetSiblingIndex(frameGo.transform.GetSiblingIndex());
+                }
+
+                // 输入屏蔽层与遮罩独立创建，因此无可见遮罩的窗口也能阻止屏幕点击穿透。
+                if (config.blockInput)
+                {
+                    inputBlockerGo = UIAnimator.CreateInputBlocker(
+                        layerRoot,
+                        config.closeOnOutsideClick
+                            ? () => window.TryRequestClose()
+                            : null);
+                    inputBlockerGo.transform.SetSiblingIndex(frameGo.transform.GetSiblingIndex());
                 }
 
                 var canvasGroup = frameGo.GetOrAddComponent<CanvasGroup>();
@@ -359,6 +376,7 @@ namespace Game.UISystem
                     frame,
                     frameGo,
                     maskGo,
+                    inputBlockerGo,
                     canvasGroup,
                     style,
                     layer,
@@ -373,7 +391,7 @@ namespace Game.UISystem
                     param,
                     resultSource,
                     frame,
-                    style,
+                    config.closeOnEsc,
                     () => !stackEntry.ParticipatesInWindowStack || IsTop(stackEntry),
                     () => openAnimationCancellation.Cancel());
 
@@ -424,6 +442,7 @@ namespace Game.UISystem
                     CleanupEntry(stackEntry);
                 else
                 {
+                    if (inputBlockerGo != null) UnityEngine.Object.Destroy(inputBlockerGo);
                     if (maskGo != null) UnityEngine.Object.Destroy(maskGo);
                     if (frameGo != null) UnityEngine.Object.Destroy(frameGo);
                 }
@@ -644,8 +663,10 @@ namespace Game.UISystem
                 entry.Window.MarkClosing();
                 entry.Window.NotifyClosing();
                 entry.ApplyInteraction(false);
-                if (entry.MaskGo == null && IsTop(entry) && _maskOwner != null)
-                    _maskOwner.ApplyMaskTransitionBlocker();
+                StackEntry transitionBlocker = entry.InputBlockerGo != null
+                    ? entry
+                    : FindNextInputBlocker(entry);
+                transitionBlocker?.ApplyInputTransitionBlocker();
                 // 先完成 Mask 所有权交接，再恢复下层渲染。交接会复制完整 RGBA，
                 // 因此同一帧始终只有一个连续颜色的可见遮罩。
                 UniTask maskTransition = PrepareMaskForClosing(entry);
@@ -695,6 +716,8 @@ namespace Game.UISystem
             RecalculateOcclusion();
 
             if (entry.MaskGo != null) UnityEngine.Object.Destroy(entry.MaskGo);
+            if (entry.InputBlockerGo != null)
+                UnityEngine.Object.Destroy(entry.InputBlockerGo);
             if (entry.FrameGo != null) UnityEngine.Object.Destroy(entry.FrameGo);
 
             if (wasTop && _stack.Count > 0)
@@ -835,6 +858,18 @@ namespace Game.UISystem
             return null;
         }
 
+        private StackEntry FindNextInputBlocker(StackEntry excluding)
+        {
+            foreach (var entry in _stack)
+            {
+                if (ReferenceEquals(entry, excluding) || entry.Window.IsClosing ||
+                    entry.InputBlockerGo == null)
+                    continue;
+                return entry;
+            }
+            return null;
+        }
+
         private UniTask PrepareMaskForClosing(StackEntry entry)
         {
             if (entry.MaskGo == null || !ReferenceEquals(_maskOwner, entry))
@@ -843,7 +878,6 @@ namespace Game.UISystem
             CancellationToken token = entry.Window.GetCancellationTokenOnDestroy();
             if (_isClosingAll)
             {
-                entry.ApplyMaskTransitionBlocker();
                 Color transparent = GetMaskColor(entry.MaskGo, entry.Style.maskColor);
                 transparent.a = 0f;
                 return UIAnimator.AnimateMaskColorAsync(
@@ -853,7 +887,6 @@ namespace Game.UISystem
             StackEntry nextOwner = FindNextMaskOwner(entry);
             if (nextOwner == null)
             {
-                entry.ApplyMaskTransitionBlocker();
                 Color transparent = GetMaskColor(entry.MaskGo, entry.Style.maskColor);
                 transparent.a = 0f;
                 return UIAnimator.AnimateMaskColorAsync(
@@ -863,7 +896,6 @@ namespace Game.UISystem
             Color handoffColor = GetMaskColor(entry.MaskGo, nextOwner.Style.maskColor);
             if (nextOwner.MaskGo.TryGetComponent<Image>(out var nextImage))
                 nextImage.color = handoffColor;
-            nextOwner.ApplyMaskTransitionBlocker();
             _maskOwner = nextOwner;
             return UIAnimator.AnimateMaskColorAsync(
                 nextOwner.MaskGo,
