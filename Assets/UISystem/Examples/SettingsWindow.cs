@@ -12,8 +12,10 @@ namespace Game.UISystem.Example
             SetTitle("设置");
 
             if (musicSlider != null)
+            {
                 musicSlider.onValueChanged.AddListener(
                     v => UnityEngine.Debug.Log($"[Settings] 音乐音量: {v:F2}"));
+            }
         }
 
         protected override void OnOpened()  => Debug.Log("[SettingsWindow] 已打开");

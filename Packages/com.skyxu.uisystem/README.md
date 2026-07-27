@@ -2,6 +2,20 @@
 
 适用于 Unity 2022.3 LTS 的异步 uGUI 窗口管理包，提供三种基础 Frame、窗口栈、分层、Toast 和动画。核心不依赖 DI 容器。
 
+## 依赖
+
+| 依赖 | 版本 | 获取方式 | 是否必需 |
+| --- | --- | --- | --- |
+| Unity Input System | 1.7.0 | 由 `package.json` 声明，自动获取 | 必需 |
+| TextMeshPro | 3.0.7 | 由 `package.json` 声明，自动获取 | 必需 |
+| uGUI | 1.0.0 | 由 `package.json` 声明，自动获取 | 必需 |
+| UniTask | 见下方 Git URL | **目标项目手动添加** | 必需 |
+| VContainer + `com.skyxu.uisystem.vcontainer` | 见下方 Git URL | 手动添加 / 安装器可选安装 | 可选 |
+
+Input System、TextMeshPro、uGUI 属于注册表包，已在本包 `package.json` 中声明，会随本包自动获取。
+
+UniTask 与 VContainer 都通过 **Git URL** 分发。UPM 的 `dependencies` 只支持注册表语义版本，**无法声明 Git 依赖**，因此它们不会作为本包的传递依赖自动安装，必须由目标项目在 `Packages/manifest.json` 中显式添加。推荐用下方的安装器自动完成；手动方式见「手动回退」。只安装本包而不装 UniTask 会导致 `UniTask` 程序集缺失、编译失败。
+
 ## 安装
 
 ### 推荐：使用轻量安装器

@@ -72,8 +72,8 @@ namespace Game.UISystem.Editor
             }
             catch
             {
-                if (Directory.Exists(stagingPath))
-                    Directory.Delete(stagingPath, true);
+                // 清理 staging 时若再抛异常会掩盖真正的失败原因，因此吞掉清理异常、保留原始异常。
+                TryDeleteDirectory(stagingPath);
                 throw;
             }
         }
@@ -261,6 +261,11 @@ namespace Game.UISystem.Editor
 
         private static bool IsSafePrefabAddress(string address)
         {
+            // 显式拒绝空地址和包含 ".." 的地址，杜绝目录穿越。
+            if (string.IsNullOrEmpty(address) ||
+                address.Contains("..", StringComparison.Ordinal))
+                return false;
+
             for (int i = 0; i < address.Length; i++)
             {
                 char c = address[i];
@@ -268,6 +273,19 @@ namespace Game.UISystem.Editor
                     return false;
             }
             return true;
+        }
+
+        private static void TryDeleteDirectory(string path)
+        {
+            try
+            {
+                if (Directory.Exists(path))
+                    Directory.Delete(path, true);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"[UISystem] 清理临时目录失败：{path}\n{exception}");
+            }
         }
 
         private static string FullPath(string projectRoot, string relativePath) =>

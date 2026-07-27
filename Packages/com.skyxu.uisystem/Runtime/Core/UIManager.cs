@@ -154,6 +154,7 @@ namespace Game.UISystem
         public readonly bool ParticipatesInWindowStack;
         public bool IsInStack { get; set; }
         public bool OpenAnimationComplete { get; set; }
+        public StackEntry TransitionBlocker { get; set; }
         public bool IsFrameCulled { get; private set; }
         public bool IsMaskCulled { get; private set; }
         private readonly List<CanvasRenderer> _frameRenderers = new List<CanvasRenderer>();
@@ -962,14 +963,14 @@ namespace Game.UISystem
                 entry.Window.NotifyClosing();
                 bool wasTop = IsTop(entry);
                 entry.ApplyInteraction(false);
-                StackEntry transitionBlocker = null;
                 if (wasTop)
                 {
-                    transitionBlocker = entry.InputBlockerGo != null
+                    // 记录在条目上，使场景切换的立即清理也能在 Closed 前复位它。
+                    entry.TransitionBlocker = entry.InputBlockerGo != null
                         ? entry
                         : FindNextInputBlocker(entry);
                 }
-                transitionBlocker?.ApplyInputTransitionBlocker();
+                entry.TransitionBlocker?.ApplyInputTransitionBlocker();
                 // 先完成 Mask 所有权交接，再恢复下层渲染。交接会复制完整 RGBA，
                 // 因此同一帧始终只有一个连续颜色的可见遮罩。
                 UniTask maskTransition = PrepareMaskForClosing(entry);
@@ -1027,6 +1028,15 @@ namespace Game.UISystem
 
             if (wasTop && _stack.Count > 0)
                 _stack.Peek().ApplyInteraction(true);
+
+            // 交接屏蔽层若不是关闭窗口自身，它未必成为新的栈顶。按真实栈位复位，
+            // 并且必须在 Closed 之前完成，确保所有等待方恢复时交互状态已经稳定。
+            if (entry.TransitionBlocker != null &&
+                !ReferenceEquals(entry.TransitionBlocker, entry))
+            {
+                entry.TransitionBlocker.ApplyInteraction(IsTop(entry.TransitionBlocker));
+            }
+            entry.TransitionBlocker = null;
 
             // Closed 必须最后完成，确保所有等待方恢复时节点已销毁、栈状态已恢复。
             entry.Closed.TrySetResult(UIUnit.Default);

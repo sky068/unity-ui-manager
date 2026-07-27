@@ -28,17 +28,30 @@ namespace Game.UISystem.Example
             }
 
             SetTitle(param.Title);
-            messageText.richText = false;
-            messageText.text = UITextSafety.NormalizePlainText(param.Message, 512);
+
+            if (messageText != null)
+            {
+                messageText.richText = false;
+                messageText.text = UITextSafety.NormalizePlainText(param.Message, 512);
+            }
+
             SetBtnLabel(confirmBtn, param.Confirm);
             SetBtnLabel(cancelBtn,  param.Cancel);
 
-            confirmBtn.onClick.AddListener(() => Complete(true));
-            cancelBtn.onClick.AddListener(()  => Complete(false));
+            if (confirmBtn != null)
+            {
+                confirmBtn.onClick.AddListener(() => Complete(true));
+            }
+            if (cancelBtn != null)
+            {
+                cancelBtn.onClick.AddListener(() => Complete(false));
+            }
         }
 
         void SetBtnLabel(Button btn, string label)
         {
+            if (btn == null)
+                return;
             var txt = btn.GetComponentInChildren<TMP_Text>();
             if (txt != null)
             {

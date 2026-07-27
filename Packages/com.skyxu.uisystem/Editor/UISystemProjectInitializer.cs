@@ -99,7 +99,9 @@ namespace Game.UISystem.Editor
                     : AssetDatabase.GetAssetPath(property.objectReferenceValue);
 
                 // 新建模板、空引用或仍指向包内默认配置时才重连；绝不覆盖用户已有配置。
-                if (createdPrefab || string.IsNullOrEmpty(currentPath) || currentPath.StartsWith(PackageRoot))
+                // 前缀比较补上 '/'，避免误判 "Packages/com.skyxu.uisystem.xxx" 这类同前缀的其它包。
+                if (createdPrefab || string.IsNullOrEmpty(currentPath) ||
+                    currentPath.StartsWith(PackageRoot + "/", System.StringComparison.Ordinal))
                 {
                     property.objectReferenceValue = config;
                     serialized.ApplyModifiedPropertiesWithoutUndo();

@@ -37,7 +37,12 @@ namespace Game.UISystem.Installer
         private static void ResumeAfterDomainReload()
         {
             if (SessionState.GetBool(PendingKey, false))
+            {
+                // 安装过程中若发生域重载，_request 与 PollRequest 订阅都会随静态状态一起丢失，
+                // 之前显示的进度条将无人清除并卡住编辑器交互。这里主动清理后再报告结果。
+                EditorUtility.ClearProgressBar();
                 EditorApplication.delayCall += ReportPendingResult;
+            }
         }
 
         [MenuItem("Tools/UISystem/Installer/Install Core Packages")]

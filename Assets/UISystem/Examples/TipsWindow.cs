@@ -26,17 +26,24 @@ namespace Game.UISystem.Example
             }
 
             SetTitle(param.Title);
-            messageText.richText = false;
-            messageText.text = UITextSafety.NormalizePlainText(param.Message, 512);
 
-            var txt = okBtn.GetComponentInChildren<TMP_Text>();
-            if (txt != null)
+            if (messageText != null)
             {
-                txt.richText = false;
-                txt.text = UITextSafety.NormalizePlainText(param.OkText, 40);
+                messageText.richText = false;
+                messageText.text = UITextSafety.NormalizePlainText(param.Message, 512);
             }
 
-            okBtn.onClick.AddListener(() => Complete(UIUnit.Default));
+            if (okBtn != null)
+            {
+                var txt = okBtn.GetComponentInChildren<TMP_Text>();
+                if (txt != null)
+                {
+                    txt.richText = false;
+                    txt.text = UITextSafety.NormalizePlainText(param.OkText, 40);
+                }
+
+                okBtn.onClick.AddListener(() => Complete(UIUnit.Default));
+            }
         }
     }
 }

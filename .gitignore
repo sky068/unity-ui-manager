@@ -58,3 +58,6 @@ Desktop.ini
 !Packages/com.skyxu.uisystem/Samples~/**
 !Packages/com.skyxu.uisystem/Documentation~/
 !Packages/com.skyxu.uisystem/Documentation~/**
+
+# Samples~ is intentionally tracked, but platform metadata inside it is not.
+Packages/com.skyxu.uisystem/Samples~/**/.DS_Store
